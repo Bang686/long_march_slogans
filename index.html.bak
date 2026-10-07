@@ -1,0 +1,5488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>九秩赓续 标语寻魂——长征红色标语向精神延伸的可视化实践</title>
+<script src="./tailwindcss.js"></script>
+<script src="./gsap.min.js"></script>
+<script src="./ScrollTrigger.min.js"></script>
+<script src="./d3.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --c-parchment: #F5E6D3;
+  --c-parchment-dark: #E8D4BC;
+  --c-ink: #1a1a1a;
+  --c-red-deep: #8B0000;
+  --c-red-bright: #C41E3A;
+  --c-ochre: #A0522D;
+  --c-earth: #6B4423;
+  --c-stone: #8B7D6B;
+  --c-charcoal: #2C2C2C;
+  --c-gold: #B8860B;
+  --font-serif: 'Noto Serif SC', 'SimSun', serif;
+  --font-sans: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--c-parchment);
+  color: var(--c-ink);
+  overflow-x: hidden;
+  line-height: 1.8;
+}
+
+/* Old paper texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--c-parchment-dark); }
+::-webkit-scrollbar-thumb { background: var(--c-red-deep); border-radius: 4px; }
+
+/* Typography */
+.font-serif { font-family: var(--font-serif); }
+.font-sans { font-family: var(--font-sans); }
+
+.text-red-deep { color: var(--c-red-deep); }
+.text-red-bright { color: var(--c-red-bright); }
+.text-ochre { color: var(--c-ochre); }
+.text-earth { color: var(--c-earth); }
+.text-stone { color: var(--c-stone); }
+
+/* ===================== HERO SECTION ===================== */
+.hero-section {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2C1810 0%, #1a0a05 50%, #3d1f14 100%);
+}
+
+.hero-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 2s ease;
+}
+
+.hero-video.loaded {
+  opacity: 1;
+}
+
+.hero-video-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    rgba(26,10,5,0.65) 0%,
+    rgba(26,10,5,0.45) 40%,
+    rgba(26,10,5,0.65) 100%
+  );
+  pointer-events: none;
+}
+
+.hero-wall {
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse at 20% 50%, rgba(139,0,0,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(160,82,45,0.1) 0%, transparent 40%),
+    url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100' height='100' fill='%232C1810'/%3E%3Crect x='0' y='0' width='2' height='100' fill='%233d1f14' opacity='0.3'/%3E%3Crect x='50' y='0' width='1' height='100' fill='%233d1f14' opacity='0.2'/%3E%3C/svg%3E");
+}
+
+.hero-wall::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 60%, rgba(26,10,5,0.8) 100%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Dust particles */
+.dust-particle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(245,230,211,0.3);
+  pointer-events: none;
+  animation: float-dust linear infinite;
+}
+
+@keyframes float-dust {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(-100vh) translateX(20px); opacity: 0; }
+}
+
+.hero-content {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  padding: 2rem;
+  max-width: 900px;
+}
+
+.hero-badge {
+  display: inline-block;
+  padding: 0.5rem 1.5rem;
+  border: 1px solid rgba(245,230,211,0.3);
+  color: var(--c-parchment);
+  font-size: 0.85rem;
+  letter-spacing: 0.3em;
+  margin-bottom: 2rem;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.hero-title {
+  font-family: var(--font-serif);
+  font-size: clamp(2.5rem, 8vw, 5.5rem);
+  font-weight: 900;
+  color: var(--c-parchment);
+  line-height: 1.2;
+  margin-bottom: 1rem;
+  text-shadow: 0 4px 30px rgba(0,0,0,0.5);
+  letter-spacing: 0.05em;
+}
+
+.hero-title span {
+  display: block;
+}
+
+.hero-title .title-main {
+  color: var(--c-red-bright);
+  position: relative;
+}
+
+.hero-title .title-main::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--c-red-bright), transparent);
+}
+
+.hero-subtitle {
+  font-family: var(--font-serif);
+  font-size: clamp(1rem, 3vw, 1.5rem);
+  color: rgba(245,230,211,0.8);
+  margin-bottom: 2rem;
+  letter-spacing: 0.15em;
+  font-weight: 400;
+}
+
+.hero-meta {
+  color: rgba(245,230,211,0.5);
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+}
+
+.hero-scroll-hint {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgba(245,230,211,0.5);
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  animation: bounce-down 2s infinite;
+}
+
+@keyframes bounce-down {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(10px); }
+}
+
+.scroll-arrow {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(to bottom, rgba(245,230,211,0.5), transparent);
+}
+
+/* ===================== MUSIC CONTROL BUTTON ===================== */
+.music-control {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 9998;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid rgba(196,30,58,0.4);
+  background: rgba(26,10,5,0.7);
+  color: var(--c-parchment);
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+.music-control:hover {
+  background: rgba(196,30,58,0.8);
+  border-color: var(--c-red-bright);
+  transform: scale(1.1);
+}
+
+.music-control.playing {
+  animation: music-pulse 2s infinite;
+  border-color: var(--c-red-bright);
+}
+
+@keyframes music-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196,30,58,0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(196,30,58,0); }
+}
+
+.music-control.paused::after {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 60%;
+  background: var(--c-red-bright);
+  transform: rotate(45deg);
+}
+
+/* ===================== SCROLLY SECTIONS ===================== */
+.section-scrolly {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+}
+
+/* Chapter 1 video background */
+.chapter1-video-bg {
+  overflow: hidden;
+}
+
+.chapter1-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 2s ease;
+}
+
+.chapter1-video.loaded {
+  opacity: 1;
+}
+
+.chapter1-video-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    rgba(245,230,211,0.75) 0%,
+    rgba(245,230,211,0.6) 50%,
+    rgba(245,230,211,0.75) 100%
+  );
+  pointer-events: none;
+}
+
+/* Chapter 3 video background */
+.chapter3-video-bg {
+  overflow: hidden;
+}
+
+.chapter3-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 2s ease;
+}
+
+.chapter3-video.loaded {
+  opacity: 1;
+}
+
+.chapter3-video-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    rgba(245,230,211,0.8) 0%,
+    rgba(245,230,211,0.65) 50%,
+    rgba(245,230,211,0.8) 100%
+  );
+  pointer-events: none;
+}
+
+/* Chapter 4 video background */
+.chapter4-video-bg {
+  overflow: hidden;
+}
+
+.chapter4-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 2s ease;
+}
+
+.chapter4-video.loaded {
+  opacity: 1;
+}
+
+.chapter4-video-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    rgba(26,10,5,0.85) 0%,
+    rgba(26,10,5,0.7) 50%,
+    rgba(26,10,5,0.85) 100%
+  );
+  pointer-events: none;
+}
+
+/* Ending video background */
+.ending-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 2s ease;
+}
+
+.ending-video.loaded {
+  opacity: 1;
+}
+
+.ending-video-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    rgba(26,10,5,0.88) 0%,
+    rgba(26,10,5,0.75) 50%,
+    rgba(26,10,5,0.88) 100%
+  );
+  pointer-events: none;
+}
+
+.scrolly-container {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 42% 55%;
+  gap: 3%;
+  align-items: center;
+}
+
+.scrolly-text {
+  padding: 2rem;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+.scrolly-visual {
+  position: relative;
+  min-height: 400px;
+  height: 60vh;
+  max-height: 600px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.province-map-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+}
+
+.province-map-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.province-map-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.province-marker {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: all;
+  z-index: 10;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: rgba(196,30,58,0.6);
+  border: 2px solid rgba(196,30,58,0.8);
+  box-shadow: 0 0 0 0 rgba(196,30,58,0.4);
+}
+
+.province-marker::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid rgba(196,30,58,0.5);
+  animation: marker-pulse 2s infinite;
+}
+
+@keyframes marker-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.6); opacity: 0; }
+}
+
+.province-marker:hover {
+  transform: scale(1.4);
+  box-shadow: 0 0 0 8px rgba(196,30,58,0.2);
+}
+
+.province-marker-label {
+  position: absolute;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,250,240,0.95);
+  border: 1px solid rgba(139,0,0,0.15);
+  border-radius: 6px;
+  padding: 4px 10px;
+  white-space: nowrap;
+  font-size: 12px;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  color: var(--c-charcoal);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 20;
+}
+
+.province-marker:hover .province-marker-label {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+.province-marker-count {
+  position: absolute;
+  top: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--c-stone);
+  font-family: var(--font-sans);
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+#departureViz svg, #provinceMap svg {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}
+
+/* ===================== ROUTE MAP IMAGE + HOTSPOTS ===================== */
+.route-map-wrapper {
+  position: relative;
+  overflow: hidden;
+}
+
+.route-map-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+}
+
+.route-map-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.route-map-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.route-hotspot {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: all;
+  z-index: 10;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 0 0 0 rgba(196,30,58,0.4);
+}
+
+.route-hotspot::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  opacity: 0;
+  transition: all 0.3s;
+}
+
+.route-hotspot::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  opacity: 0.5;
+  animation: hotspot-pulse 2s infinite;
+}
+
+@keyframes hotspot-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.5); opacity: 0; }
+}
+
+.route-hotspot:hover {
+  transform: scale(1.5);
+  box-shadow: 0 0 0 8px rgba(196,30,58,0.2);
+}
+
+.route-hotspot:hover::before {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+.route-hotspot-tooltip {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) scale(0.8);
+  background: rgba(255,250,240,0.95);
+  border: 1px solid rgba(139,0,0,0.15);
+  border-radius: 6px;
+  padding: 6px 12px;
+  white-space: nowrap;
+  font-size: 12px;
+  font-family: var(--font-serif);
+  color: var(--c-charcoal);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 20;
+}
+
+.route-hotspot-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(255,250,240,0.95);
+}
+
+.route-hotspot:hover .route-hotspot-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+.route-hotspot-year {
+  font-size: 10px;
+  color: var(--c-stone);
+  margin-top: 2px;
+  font-family: var(--font-sans);
+}
+
+.route-hotspot-army {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.scrolly-text {
+  padding: 2rem;
+}
+
+.scrolly-visual {
+  position: relative;
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scrolly-visual-sticky {
+  position: sticky;
+  top: 20vh;
+  height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* For text-only full-width sections */
+.section-fulltext {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 6rem 2rem;
+  background: var(--c-parchment);
+}
+
+.section-dark {
+  background: linear-gradient(135deg, #2C1810, #1a0a05);
+  color: var(--c-parchment);
+}
+
+.section-dark .text-block {
+  color: rgba(245,230,211,0.9);
+}
+
+/* Text blocks with typewriter / reveal effects */
+.text-block {
+  max-width: 640px;
+  margin: 0 auto;
+  font-size: 1.125rem;
+  line-height: 2;
+  color: var(--c-charcoal);
+}
+
+.text-block p {
+  margin-bottom: 1.5rem;
+}
+
+/* Ending section paragraph formatting */
+#ending .text-block p {
+  text-indent: 2em;
+  text-align: justify;
+}
+
+/* Chapter 2 paragraph formatting - no first-letter effect */
+#chapter2 .text-block p {
+  text-indent: 2em;
+  text-align: justify;
+}
+
+#chapter2 .text-block p:first-child::first-letter {
+  font-size: inherit;
+  float: none;
+  margin: 0;
+  color: inherit;
+  font-weight: inherit;
+}
+
+#chapter2 .text-block p:first-child {
+  text-indent: 2em;
+}
+
+/* Chapter 3 paragraph formatting - no first-letter effect */
+#chapter3 .text-block p {
+  text-indent: 2em;
+  text-align: justify;
+}
+
+#chapter3 .text-block p:first-child::first-letter {
+  font-size: inherit;
+  float: none;
+  margin: 0;
+  color: inherit;
+  font-weight: inherit;
+}
+
+#chapter3 .text-block p:first-child {
+  text-indent: 2em;
+}
+
+/* Chapter 4 paragraph formatting - white text on dark video bg */
+#chapter4 .text-block {
+  color: #fff;
+}
+
+#chapter4 .chapter-label {
+  color: var(--c-red-bright);
+}
+
+#chapter4 .chapter-title {
+  color: var(--c-parchment);
+}
+
+#chapter4 .text-block p {
+  text-indent: 2em;
+  text-align: justify;
+}
+
+#chapter4 .text-block p:first-child::first-letter {
+  font-size: inherit;
+  float: none;
+  margin: 0;
+  color: inherit;
+  font-weight: inherit;
+}
+
+#chapter4 .text-block p:first-child {
+  text-indent: 2em;
+}
+
+/* Chapter 6 paragraph formatting - no first-letter effect */
+#chapter6 .text-block p {
+  text-indent: 2em;
+  text-align: justify;
+}
+
+#chapter6 .text-block p:first-child::first-letter {
+  font-size: inherit;
+  float: none;
+  margin: 0;
+  color: inherit;
+  font-weight: inherit;
+}
+
+#chapter6 .text-block p:first-child {
+  text-indent: 2em;
+}
+
+/* Chapter 7 paragraph formatting - no first-letter effect */
+#chapter7 .text-block p {
+  text-indent: 2em;
+  text-align: justify;
+}
+
+#chapter7 .text-block p:first-child::first-letter {
+  font-size: inherit;
+  float: none;
+  margin: 0;
+  color: inherit;
+  font-weight: inherit;
+}
+
+#chapter7 .text-block p:first-child {
+  text-indent: 2em;
+}
+
+.text-block p:first-child::first-letter {
+  font-family: var(--font-serif);
+  text-indent: 2em;
+}
+
+.text-block p:first-child::first-letter {
+  text-indent: 2em;
+}
+
+.text-block p:first-child::first-letter {
+  font-family: var(--font-serif);
+  font-size: 3.5rem;
+  float: left;
+  line-height: 0.8;
+  margin-right: 0.5rem;
+  margin-top: 0.1rem;
+  color: var(--c-red-deep);
+  font-weight: 700;
+}
+
+.section-dark .text-block p:first-child::first-letter {
+  color: var(--c-red-bright);
+}
+
+/* Date caps for chapter 1 first paragraph */
+.date-caps {
+  font-family: var(--font-serif);
+  font-size: 3.5rem;
+  float: left;
+  line-height: 0.8;
+  margin-right: 0.5rem;
+  margin-top: 0.1rem;
+  color: var(--c-red-deep);
+  font-weight: 700;
+}
+
+/* Override first-letter for chapter 1 since date-caps handles it */
+#chapter1 .text-block p:first-child::first-letter {
+  font-size: inherit;
+  float: none;
+  margin: 0;
+  color: inherit;
+  font-weight: inherit;
+}
+
+/* Remove text-indent from first paragraph since date-caps floats */
+#chapter1 .text-block p:first-child {
+  text-indent: 0;
+}
+
+/* Chapter headings */
+.chapter-label {
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--c-red-deep);
+  margin-bottom: 1rem;
+  position: relative;
+  padding-left: 3rem;
+}
+
+.chapter-label::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2rem;
+  height: 1px;
+  background: var(--c-red-deep);
+}
+
+.section-dark .chapter-label {
+  color: var(--c-red-bright);
+}
+
+.section-dark .chapter-label::before {
+  background: var(--c-red-bright);
+}
+
+.chapter-title {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  color: var(--c-ink);
+  margin-bottom: 2rem;
+  line-height: 1.3;
+}
+
+.section-dark .chapter-title {
+  color: var(--c-parchment);
+}
+
+/* Quote blocks */
+.quote-block {
+  position: relative;
+  padding: 2rem 2rem 2rem 3rem;
+  margin: 3rem 0;
+  border-left: 3px solid var(--c-red-deep);
+  background: rgba(139,0,0,0.03);
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  line-height: 1.8;
+  color: var(--c-ink);
+}
+
+.section-dark .quote-block {
+  border-left-color: var(--c-red-bright);
+  background: rgba(196,30,58,0.25);
+  color: var(--c-parchment);
+  backdrop-filter: blur(4px);
+}
+
+.quote-block::before {
+  content: '"';
+  position: absolute;
+  left: 0.5rem;
+  top: 0.5rem;
+  font-size: 4rem;
+  line-height: 1;
+  color: var(--c-red-deep);
+  opacity: 0.3;
+  font-family: Georgia, serif;
+}
+
+.quote-author {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: var(--c-stone);
+  font-family: var(--font-sans);
+  font-style: normal;
+}
+
+.section-dark .quote-author {
+  color: rgba(245,230,211,0.6);
+}
+
+/* ===================== SLOGAN PROTECTION IMAGE ===================== */
+.slogan-protection-img {
+  margin: 1.5rem 0;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+  transition: all 0.5s;
+}
+
+.protection-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: sepia(0.3) contrast(1.05);
+  transition: all 0.5s;
+}
+
+.slogan-protection-img:hover .protection-img {
+  filter: sepia(0.1) contrast(1.1);
+  transform: scale(1.02);
+}
+
+.protection-caption {
+  text-align: center;
+  font-size: 0.85rem;
+  color: rgba(245,230,211,0.6);
+  font-family: var(--font-sans);
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  letter-spacing: 0.05em;
+  background: rgba(0,0,0,0.2);
+}
+
+@media (max-width: 640px) {
+  .slogan-protection-img {
+    margin: 1rem 0;
+    border-radius: 4px;
+  }
+  .protection-caption {
+    font-size: 0.75rem;
+  }
+}
+
+/* ===================== DATA VISUALIZATIONS ===================== */
+.viz-container {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.viz-caption {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--c-stone);
+  margin-top: 1rem;
+  font-style: italic;
+}
+
+/* Counter animation */
+.counter-box {
+  text-align: center;
+  padding: 2rem;
+}
+
+.counter-number {
+  font-family: var(--font-serif);
+  font-size: clamp(3rem, 8vw, 6rem);
+  font-weight: 900;
+  color: var(--c-red-deep);
+  line-height: 1;
+  display: block;
+}
+
+.section-dark .counter-number {
+  color: var(--c-red-bright);
+}
+
+.counter-label {
+  font-size: 0.9rem;
+  color: var(--c-stone);
+  margin-top: 0.5rem;
+  letter-spacing: 0.1em;
+}
+
+/* ===================== SLOGAN CARDS ===================== */
+.slogan-card {
+  position: relative;
+  padding: 1.5rem 2rem;
+  background: #fff;
+  border: 1px solid rgba(139,0,0,0.1);
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.slogan-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+}
+
+.slogan-card .slogan-text {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  color: var(--c-ink);
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.slogan-card .slogan-source {
+  font-size: 0.8rem;
+  color: var(--c-stone);
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed rgba(139,0,0,0.1);
+}
+
+/* ===================== TIMELINE ===================== */
+.timeline-line {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--c-red-deep), var(--c-ochre), transparent);
+  transform: translateX(-50%);
+}
+
+.timeline-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--c-red-deep);
+  border: 3px solid var(--c-parchment);
+  box-shadow: 0 0 0 2px var(--c-red-deep);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* ===================== MAP / PROVINCE TAGS ===================== */
+.province-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(139,0,0,0.08);
+  border: 1px solid rgba(139,0,0,0.15);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  margin: 0.25rem;
+  transition: all 0.3s;
+  cursor: default;
+}
+
+.province-tag:hover {
+  background: var(--c-red-deep);
+  color: white;
+  border-color: var(--c-red-deep);
+}
+
+.province-tag .count {
+  font-weight: 700;
+  color: var(--c-red-deep);
+  font-size: 1rem;
+}
+
+.province-tag:hover .count {
+  color: white;
+}
+
+/* ===================== INK SPREAD EFFECT ===================== */
+.ink-spread {
+  position: relative;
+  overflow: hidden;
+}
+
+.ink-spread::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(139,0,0,0.08) 0%, transparent 60%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+
+.ink-spread:hover::before {
+  opacity: 1;
+}
+
+/* ===================== PORTRAIT SILHOUETTE ===================== */
+.portrait-frame {
+  position: relative;
+  width: 200px;
+  height: 260px;
+  border: 3px solid var(--c-red-deep);
+  background: linear-gradient(180deg, rgba(139,0,0,0.05) 0%, rgba(139,0,0,0.15) 100%);
+  overflow: hidden;
+}
+
+.portrait-frame::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 120px;
+  background: var(--c-red-deep);
+  opacity: 0.2;
+  border-radius: 40px 40px 0 0;
+}
+
+.portrait-frame::after {
+  content: '';
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 50px;
+  background: var(--c-red-deep);
+  opacity: 0.2;
+  border-radius: 50%;
+}
+
+.portrait-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: sepia(0.4) contrast(1.1);
+  transition: all 0.5s;
+}
+
+.portrait-frame:hover .portrait-img {
+  filter: sepia(0.1) contrast(1.15);
+  transform: scale(1.05);
+}
+
+/* ===================== SPIRIT CONNECTIONS ===================== */
+.spirit-node {
+  padding: 1.5rem;
+  background: rgba(139,0,0,0.05);
+  border: 1px solid rgba(139,0,0,0.1);
+  border-radius: 8px;
+  position: relative;
+  transition: all 0.3s;
+}
+
+.spirit-node:hover {
+  background: rgba(139,0,0,0.1);
+  transform: scale(1.02);
+}
+
+.spirit-node .node-title {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  color: var(--c-red-deep);
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.spirit-node .node-slogan {
+  font-style: italic;
+  color: var(--c-ochre);
+  font-size: 0.95rem;
+  padding: 0.5rem 0;
+  border-left: 2px solid var(--c-red-bright);
+  padding-left: 1rem;
+  margin: 0.5rem 0;
+}
+
+/* ===================== LEGACY CARDS ===================== */
+.legacy-card {
+  padding: 2rem;
+  background: #fff;
+  border: 1px solid rgba(139,0,0,0.1);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.legacy-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--c-red-deep);
+  transition: width 0.3s;
+}
+
+.legacy-card:hover::before {
+  width: 100%;
+  opacity: 0.05;
+}
+
+.legacy-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+}
+
+.legacy-card .legacy-number {
+  font-family: var(--font-serif);
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: var(--c-red-deep);
+  opacity: 0.2;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+.legacy-card .legacy-title {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--c-ink);
+  margin-bottom: 0.75rem;
+}
+
+.legacy-card .legacy-desc {
+  font-size: 0.95rem;
+  color: var(--c-stone);
+  line-height: 1.7;
+}
+
+/* ===================== INTERACTIVE WALL ===================== */
+.wall-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.5rem;
+  padding: 1rem 0;
+  width: 100%;
+}
+
+.wall-slogan {
+  padding: 0.75rem;
+  background: rgba(245,230,211,0.9);
+  border: 1px solid rgba(139,0,0,0.15);
+  font-family: var(--font-serif);
+  font-size: 0.85rem;
+  text-align: center;
+  color: var(--c-red-deep);
+  cursor: pointer;
+  transition: all 0.3s;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.2em;
+  user-select: none;
+}
+
+.wall-slogan:hover {
+  background: var(--c-red-deep);
+  color: var(--c-parchment);
+  transform: scale(1.05);
+  z-index: 10;
+  box-shadow: 0 5px 20px rgba(139,0,0,0.3);
+}
+
+/* ===================== FLY-IN ANIMATIONS ===================== */
+.fly-in-left {
+  opacity: 0;
+  transform: translateX(-100px);
+}
+
+.fly-in-right {
+  opacity: 0;
+  transform: translateX(100px);
+}
+
+.fly-in-bottom {
+  opacity: 0;
+  transform: translateY(80px);
+}
+
+.fly-in-scale {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 768px) {
+  .scrolly-container {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  .scrolly-visual {
+    min-height: 300px;
+    order: -1;
+  }
+  
+  .hero-title {
+    font-size: 2.5rem;
+  }
+  
+  .text-block {
+    font-size: 1rem;
+  }
+  
+  .timeline-line {
+    left: 1rem;
+  }
+  
+  .timeline-dot {
+    left: 1rem;
+  }
+  
+  .wall-slogan {
+    writing-mode: horizontal-tb;
+    height: auto;
+    letter-spacing: normal;
+  }
+  
+  .wall-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+}
+
+/* ===================== LOADING SCREEN ===================== */
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--c-parchment);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.8s, visibility 0.8s;
+}
+
+.loading-screen.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.loading-brush {
+  width: 200px;
+  height: 4px;
+  background: rgba(139,0,0,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 1rem;
+}
+
+.loading-brush-inner {
+  height: 100%;
+  width: 0%;
+  background: var(--c-red-deep);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.loading-text {
+  font-family: var(--font-serif);
+  color: var(--c-red-deep);
+  font-size: 1.25rem;
+  letter-spacing: 0.2em;
+}
+
+/* ===================== PROGRESS BAR ===================== */
+.reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--c-red-deep), var(--c-red-bright));
+  z-index: 1000;
+  width: 0%;
+  transition: width 0.1s;
+}
+
+/* ===================== SPECIAL EFFECTS ===================== */
+/* Ink drop effect for chapter transitions */
+.ink-transition {
+  position: relative;
+}
+
+.ink-transition::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--c-red-deep) 0%, transparent 70%);
+  opacity: 0.05;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 1s, height 1s;
+  pointer-events: none;
+}
+
+.ink-transition.active::after {
+  width: 150vw;
+  height: 150vw;
+}
+
+/* Handwriting animation for slogans */
+@keyframes handwriting {
+  from { stroke-dashoffset: 1000; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* Glow effect for important text */
+.text-glow {
+  text-shadow: 0 0 20px rgba(196,30,58,0.3), 0 0 40px rgba(196,30,58,0.1);
+}
+
+/* Grain texture for images */
+.grain-overlay {
+  position: relative;
+}
+
+.grain-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+/* Sticky visualization for scrolly sections */
+.sticky-visual {
+  position: sticky;
+  top: 15vh;
+  height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===================== CATEGORY BUBBLES ===================== */
+.category-bubble {
+  display: inline-block;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  margin: 0.25rem;
+  cursor: default;
+  transition: all 0.3s;
+  border: 1px solid;
+}
+
+.category-bubble:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+/* ===================== DECORATIVE DIVIDERS ===================== */
+.divider-brush {
+  width: 100px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--c-red-deep), transparent);
+  margin: 3rem auto;
+  position: relative;
+}
+
+.divider-brush::before,
+.divider-brush::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c-red-deep);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.divider-brush::before { left: 30%; }
+.divider-brush::after { right: 30%; }
+
+/* ===================== ENDING SECTION ===================== */
+.ending-section {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 4rem 0;
+  background: linear-gradient(180deg, var(--c-parchment) 0%, #2C1810 100%);
+  overflow: hidden;
+}
+
+.ending-fireflies {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.firefly {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: var(--c-red-bright);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--c-red-bright), 0 0 20px var(--c-red-bright);
+  animation: firefly-float 6s ease-in-out infinite;
+  opacity: 0;
+}
+
+@keyframes firefly-float {
+  0% { opacity: 0; transform: translate(0, 0) scale(0); }
+  20% { opacity: 1; transform: translate(10px, -30px) scale(1); }
+  40% { opacity: 0.6; transform: translate(-5px, -60px) scale(0.8); }
+  60% { opacity: 1; transform: translate(15px, -90px) scale(1); }
+  80% { opacity: 0.4; transform: translate(-10px, -120px) scale(0.6); }
+  100% { opacity: 0; transform: translate(5px, -150px) scale(0); }
+}
+
+/* ===================== MODAL / POPUP ===================== */
+.info-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: rgba(0,0,0,0.6);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+
+.info-modal.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.info-modal-content {
+  background: var(--c-parchment);
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 2.5rem;
+  border-radius: 8px;
+  position: relative;
+  transform: translateY(20px) scale(0.95);
+  transition: transform 0.3s;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.info-modal.active .info-modal-content {
+  transform: translateY(0) scale(1);
+}
+
+.info-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--c-stone);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: var(--c-stone);
+  transition: all 0.3s;
+}
+
+.info-modal-close:hover {
+  background: var(--c-red-deep);
+  color: white;
+  border-color: var(--c-red-deep);
+}
+
+/* ===================== HORIZONTAL SCROLL GALLERY ===================== */
+.gallery-scroll {
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+  padding: 2rem 1rem;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.gallery-scroll::-webkit-scrollbar { display: none; }
+
+.gallery-item {
+  flex: 0 0 300px;
+  scroll-snap-align: center;
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid rgba(139,0,0,0.1);
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.gallery-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+/* Dark section gallery items */
+.section-dark .gallery-item {
+  background: rgba(40,20,10,0.85);
+  border-color: rgba(196,30,58,0.3);
+  color: rgba(245,230,211,0.9);
+}
+
+.section-dark .gallery-item .slogan-text {
+  color: rgba(245,230,211,0.95);
+}
+
+.section-dark .gallery-item:hover {
+  box-shadow: 0 10px 30px rgba(139,0,0,0.2);
+}
+
+@media (max-width: 768px) {
+  .gallery-item { flex: 0 0 260px; }
+}
+
+/* ===================== SVG CHARTS ===================== */
+.chart-bar {
+  transition: all 0.5s;
+  cursor: pointer;
+}
+
+.chart-bar:hover {
+  filter: brightness(1.2);
+}
+
+.chart-label {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  fill: var(--c-stone);
+}
+
+.chart-axis {
+  stroke: var(--c-stone);
+  stroke-width: 1;
+  opacity: 0.3;
+}
+
+.chart-grid {
+  stroke: var(--c-stone);
+  stroke-width: 0.5;
+  opacity: 0.15;
+  stroke-dasharray: 4,4;
+}
+
+/* ===================== ANIMATED TEXT REVEAL ===================== */
+.reveal-text {
+  overflow: hidden;
+}
+
+.reveal-text span {
+  display: inline-block;
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+/* ===================== STORY CHARACTER INTRO ===================== */
+.character-intro {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 2rem;
+  background: rgba(139,0,0,0.03);
+  border-radius: 8px;
+  margin: 2rem 0;
+}
+
+@media (max-width: 768px) {
+  .character-intro {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+/* ===================== MAP VISUALIZATION ===================== */
+.map-container {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.map-province {
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.map-province:hover {
+  filter: brightness(1.3);
+}
+
+.map-tooltip {
+  position: absolute;
+  padding: 0.5rem 1rem;
+  background: var(--c-charcoal);
+  color: var(--c-parchment);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 100;
+  white-space: nowrap;
+}
+
+/* ===================== TYPOGRAPHY UTILITIES ===================== */
+.drop-cap::first-letter {
+  font-family: var(--font-serif);
+  font-size: 3.5rem;
+  float: left;
+  line-height: 0.8;
+  margin-right: 0.5rem;
+  margin-top: 0.1rem;
+  color: var(--c-red-deep);
+  font-weight: 700;
+}
+
+.section-number {
+  font-family: var(--font-serif);
+  font-size: 5rem;
+  font-weight: 900;
+  color: rgba(139,0,0,0.08);
+  line-height: 1;
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Vertical text for decoration */
+.vertical-text {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  letter-spacing: 0.3em;
+}
+
+/* ===================== GRID SYSTEM ===================== */
+.grid-1 { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+.grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.5rem; }
+
+@media (max-width: 768px) {
+  .grid-2, .grid-3, .grid-4, .grid-5 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .grid-4, .grid-5 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ===================== TIMELINE COMPONENT ===================== */
+.timeline-component {
+  position: relative;
+  padding-left: 2rem;
+  margin: 2rem 0;
+}
+
+.timeline-component::before {
+  content: '';
+  position: absolute;
+  left: 0.5rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--c-red-deep), var(--c-ochre), transparent);
+}
+
+.timeline-item {
+  position: relative;
+  padding: 1rem 0 1.5rem 1.5rem;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -1.5rem;
+  top: 1.5rem;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--c-parchment);
+  border: 2px solid var(--c-red-deep);
+  box-shadow: 0 0 0 3px rgba(139,0,0,0.1);
+}
+
+.timeline-date {
+  font-family: var(--font-serif);
+  font-size: 0.85rem;
+  color: var(--c-red-deep);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.25rem;
+}
+
+.timeline-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--c-ink);
+  margin-bottom: 0.5rem;
+}
+
+.timeline-desc {
+  font-size: 0.95rem;
+  color: var(--c-stone);
+  line-height: 1.6;
+}
+
+.section-dark .timeline-item::before {
+  background: #2C1810;
+  border-color: var(--c-red-bright);
+}
+
+.section-dark .timeline-date {
+  color: var(--c-red-bright);
+}
+
+.section-dark .timeline-title {
+  color: var(--c-parchment);
+}
+
+.section-dark .timeline-desc {
+  color: rgba(245,230,211,0.7);
+}
+
+/* ===================== SLOGAN WRITING EFFECT ===================== */
+.writing-effect {
+  position: relative;
+  display: inline-block;
+}
+
+.writing-effect::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 2px;
+  background: var(--c-red-deep);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.8s ease-out;
+}
+
+.writing-effect.active::after {
+  transform: scaleX(1);
+}
+
+/* ===================== FLOATING ELEMENTS ===================== */
+.float-element {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+
+/* ===================== TEXT SCRAMBLE REVEAL ===================== */
+.scramble-text {
+  display: inline-block;
+}
+
+/* ===================== PAPER TEXTURE CARD ===================== */
+.paper-card {
+  background: #fff;
+  background-image: 
+    linear-gradient(90deg, rgba(139,0,0,0.01) 1px, transparent 1px),
+    linear-gradient(rgba(139,0,0,0.01) 1px, transparent 1px);
+  background-size: 20px 20px;
+  border: 1px solid rgba(139,0,0,0.08);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+  padding: 2rem;
+  position: relative;
+}
+
+.paper-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+/* ===================== INK BLOT DECORATION ===================== */
+.ink-blot {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(139,0,0,0.04) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ===================== CHAPTER TRANSITION ===================== */
+.chapter-transition {
+  position: relative;
+  overflow: hidden;
+}
+
+.chapter-transition::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--c-red-deep) 0%, transparent 60%);
+  opacity: 0.03;
+  transform: translate(-50%, -50%);
+  transition: width 1.5s ease-out, height 1.5s ease-out;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.chapter-transition.active::before {
+  width: 200vmax;
+  height: 200vmax;
+}
+
+/* ===================== ENHANCED LEGACY CARDS ===================== */
+.legacy-card {
+  position: relative;
+  padding: 2rem;
+  background: #fff;
+  border: 1px solid rgba(139,0,0,0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.legacy-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--c-red-deep);
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.legacy-card:hover::before {
+  width: 100%;
+  opacity: 0.03;
+}
+
+.legacy-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.12);
+}
+
+.legacy-card:active {
+  transform: translateY(-4px) scale(0.98);
+}
+
+/* ===================== SLOGAN WALL ENHANCED ===================== */
+.wall-slogan {
+  position: relative;
+  overflow: hidden;
+}
+
+.wall-slogan::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--c-red-deep);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: -1;
+}
+
+.wall-slogan:hover::after {
+  transform: translateY(0);
+}
+
+/* ===================== ENHANCED SPIRIT NODES ===================== */
+.spirit-node {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.spirit-node::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(139,0,0,0.03), transparent);
+  transition: left 0.6s;
+}
+
+.spirit-node:hover::before {
+  left: 100%;
+}
+
+.spirit-node:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+
+/* ===================== MOBILE ENHANCEMENTS ===================== */
+@media (max-width: 768px) {
+  .section-scrolly {
+    padding: 2rem 1rem;
+    min-height: auto;
+  }
+  
+  .scrolly-container {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  .scrolly-visual {
+    min-height: 300px;
+    order: -1;
+  }
+  
+  .hero-title {
+    font-size: 2.5rem;
+  }
+  
+  .text-block {
+    font-size: 1rem;
+  }
+  
+  .text-block p:first-child::first-letter {
+    font-size: 2.5rem;
+  }
+  
+  .timeline-component {
+    padding-left: 1.5rem;
+  }
+  
+  .wall-slogan {
+    writing-mode: horizontal-tb;
+    height: auto;
+    letter-spacing: normal;
+    font-size: 0.75rem;
+  }
+  
+  .wall-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+  
+  .gallery-item {
+    flex: 0 0 260px;
+  }
+  
+  .character-intro {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .portrait-frame {
+    margin: 0 auto;
+  }
+  
+  .counter-number {
+    font-size: 2.5rem;
+  }
+  
+  .quote-block {
+    padding: 1.5rem 1.5rem 1.5rem 2rem;
+    font-size: 1.1rem;
+  }
+  
+  .info-modal-content {
+    padding: 1.5rem;
+    max-height: 85vh;
+  }
+  
+  .paper-card {
+    padding: 1.5rem;
+  }
+  
+  .legacy-card {
+    padding: 1.5rem;
+  }
+  
+  .spirit-node {
+    padding: 1rem;
+  }
+  
+  .chapter-title {
+    font-size: 1.75rem;
+  }
+  
+  .section-number {
+    font-size: 3rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+  
+  .hero-subtitle {
+    font-size: 0.9rem;
+  }
+  
+  .chapter-title {
+    font-size: 1.5rem;
+  }
+  
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+  
+  .counter-box {
+    padding: 1rem;
+  }
+  
+  .counter-number {
+    font-size: 2rem;
+  }
+  
+  .counter-label {
+    font-size: 0.75rem;
+  }
+}
+
+/* ===================== REDUCED MOTION ===================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .dust-particle,
+  .firefly {
+    display: none;
+  }
+}
+
+/* ===================== PRINT STYLES ===================== */
+@media print {
+  .loading-screen,
+  .reading-progress,
+  .hero-scroll-hint,
+  .info-modal,
+  .dust-particle,
+  .firefly {
+    display: none !important;
+  }
+  
+  section {
+    page-break-inside: avoid;
+  }
+  
+  .hero-section {
+    height: auto;
+    min-height: 50vh;
+  }
+}
+
+/* ===================== UTILITY CLASSES ===================== */
+.text-center { text-align: center; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+.w-full { width: 100%; }
+.max-w-prose { max-width: 65ch; }
+.max-w-wide { max-width: 1200px; }
+.py-20 { padding-top: 5rem; padding-bottom: 5rem; }
+.py-32 { padding-top: 8rem; padding-bottom: 8rem; }
+.px-4 { padding-left: 1rem; padding-right: 1rem; }
+.mt-8 { margin-top: 2rem; }
+.mb-4 { margin-bottom: 1rem; }
+.mb-8 { margin-bottom: 2rem; }
+.gap-4 { gap: 1rem; }
+.gap-8 { gap: 2rem; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.relative { position: relative; }
+.overflow-hidden { overflow: hidden; }
+.rounded-lg { border-radius: 8px; }
+.shadow-lg { box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+.bg-white { background: #fff; }
+/* ===================== TELEGRAM EFFECT ===================== */
+.telegram-section {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #1a0a05 0%, #2C1810 40%, #1a0a05 100%);
+  overflow: hidden;
+}
+
+.telegram-wall {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 30% 70%, rgba(139,0,0,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 30%, rgba(160,82,45,0.05) 0%, transparent 40%),
+    url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='60' height='60' fill='%231a0a05'/%3E%3Ccircle cx='30' cy='30' r='1' fill='%233d1f14' opacity='0.15'/%3E%3Ccircle cx='10' cy='10' r='0.5' fill='%233d1f14' opacity='0.1'/%3E%3Ccircle cx='50' cy='50' r='0.5' fill='%233d1f14' opacity='0.1'/%3E%3C/svg%3E");
+}
+
+/* Weathered wall texture overlay */
+.telegram-wall::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 2px,
+    rgba(61,31,20,0.03) 2px,
+    rgba(61,31,20,0.03) 4px
+  );
+}
+
+.telegram-machine {
+  position: relative;
+  z-index: 10;
+  max-width: 560px;
+  width: 90%;
+  perspective: 1000px;
+}
+
+.telegram-envelope {
+  position: relative;
+  background: linear-gradient(135deg, #d4c4a8 0%, #c5b496 50%, #b8a684 100%);
+  border-radius: 4px 4px 12px 12px;
+  padding: 2rem 2rem 3rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.telegram-envelope::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(135deg, #c5b496 0%, #b8a684 100%);
+  clip-path: polygon(0 0, 50% 100%, 100% 0);
+  border-bottom: 1px dashed rgba(139,0,0,0.15);
+  z-index: 2;
+}
+
+.telegram-envelope::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 20% 80%, rgba(139,0,0,0.04) 0%, transparent 30%), radial-gradient(ellipse at 80% 30%, rgba(160,82,45,0.03) 0%, transparent 25%), url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.06'/%3E%3C/svg%3E");
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+.telegram-stamp {
+  position: absolute;
+  top: 70px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  border: 2px solid rgba(139,0,0,0.25);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
+  color: rgba(139,0,0,0.4);
+  transform: rotate(-12deg);
+  z-index: 3;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.telegram-stamp::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px dashed rgba(139,0,0,0.2);
+  border-radius: 50%;
+}
+
+.telegram-address {
+  position: relative;
+  z-index: 3;
+  padding-top: 3rem;
+  padding-left: 1rem;
+  margin-bottom: 1.5rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: rgba(60,40,20,0.6);
+  line-height: 1.8;
+  letter-spacing: 0.05em;
+}
+
+.telegram-address-line {
+  border-bottom: 1px solid rgba(60,40,20,0.1);
+  padding-bottom: 0.2rem;
+  margin-bottom: 0.3rem;
+  max-width: 70%;
+}
+
+.telegram-letter {
+  position: relative;
+  z-index: 3;
+  background: linear-gradient(180deg, #f0e6d0 0%, #e8dcc0 100%);
+  padding: 1.5rem;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  border: 1px solid rgba(139,0,0,0.08);
+  min-height: 180px;
+  transform: translateY(0);
+  transition: transform 0.6s ease-out;
+}
+
+.telegram-letter.opened {
+  transform: translateY(-10px);
+}
+
+.telegram-letter::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(139,0,0,0.03) 23px, rgba(139,0,0,0.03) 24px);
+  pointer-events: none;
+  border-radius: 4px;
+}
+
+.telegram-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px dashed rgba(139,0,0,0.15);
+}
+
+.telegram-bulb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #C41E3A;
+  box-shadow: 0 0 8px rgba(196,30,58,0.4), 0 0 16px rgba(196,30,58,0.2);
+  animation: bulb-blink 1.5s ease-in-out infinite;
+}
+
+.telegram-label {
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: rgba(60,40,20,0.5);
+  text-transform: uppercase;
+}
+
+.telegram-paper {
+  position: relative;
+  padding: 1rem 0.5rem;
+  min-height: 120px;
+}
+
+.telegram-text {
+  font-family: 'Courier New', monospace;
+  font-size: 1rem;
+  line-height: 1.8;
+  color: rgba(40,20,10,0.85);
+  letter-spacing: 0.03em;
+  position: relative;
+  z-index: 2;
+}
+
+.telegram-text .cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: rgba(139,0,0,0.6);
+  animation: cursor-blink 0.8s step-end infinite;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+}
+
+.telegram-date {
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  color: rgba(60,40,20,0.4);
+  letter-spacing: 0.15em;
+  margin-top: 1rem;
+  text-align: right;
+  position: relative;
+  z-index: 2;
+}
+
+.telegram-scroll-hint {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  color: rgba(245,230,211,0.3);
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  animation: bounce-down 2s infinite;
+}
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  color: rgba(245,230,211,0.3);
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  animation: bounce-down 2s infinite;
+}
+
+/* Message bubble popup effect */
+.message-bubble-section {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 4rem 2rem;
+  background: var(--c-parchment);
+  overflow: hidden;
+}
+
+.message-bubble-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+  max-width: 1200px;
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.message-bubble-photo {
+  flex: 0 0 400px;
+  max-width: 450px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bubble-photo-img {
+  width: 100%;
+  max-height: 550px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  filter: sepia(0.3) contrast(1.1);
+  transition: all 0.5s;
+}
+
+.bubble-photo-img:hover {
+  filter: sepia(0.1) contrast(1.2);
+  transform: scale(1.02);
+}
+
+.bubble-photo-caption {
+  margin-top: 0.8rem;
+  font-size: 0.8rem;
+  color: var(--c-stone);
+  font-family: var(--font-serif);
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+.message-bubble-container {
+  max-width: 700px;
+  width: 100%;
+  position: relative;
+  flex: 1;
+}
+
+.message-bubble {
+  position: relative;
+  padding: 2rem 2.5rem;
+  background: #fff;
+  border: 2px solid var(--c-red-deep);
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(139,0,0,0.1), 0 0 0 1px rgba(139,0,0,0.05);
+  margin-bottom: 1.5rem;
+  opacity: 0;
+  transform: translateY(30px) scale(0.95);
+  will-change: transform, opacity;
+}
+
+.message-bubble.active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.message-bubble::before {
+  content: '';
+  position: absolute;
+  bottom: -12px;
+  left: 40px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-right: 2px solid var(--c-red-deep);
+  border-bottom: 2px solid var(--c-red-deep);
+  transform: rotate(45deg);
+}
+
+.message-bubble .bubble-text {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  line-height: 1.8;
+  color: var(--c-ink);
+  font-weight: 600;
+}
+
+.message-bubble .bubble-meta {
+  font-size: 0.8rem;
+  color: var(--c-stone);
+  margin-top: 1rem;
+  letter-spacing: 0.1em;
+}
+
+.message-bubble .sender-avatar {
+  position: absolute;
+  bottom: -20px;
+  left: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--c-red-deep), var(--c-red-bright));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 3px solid var(--c-parchment);
+  box-shadow: 0 2px 10px rgba(139,0,0,0.2);
+}
+
+.message-bubble.right {
+  margin-left: auto;
+  margin-right: 0;
+  border-color: var(--c-stone);
+  background: rgba(245,230,211,0.5);
+}
+
+.message-bubble.right::before {
+  left: auto;
+  right: 40px;
+  border-right: none;
+  border-left: 2px solid var(--c-stone);
+  border-bottom: 2px solid var(--c-stone);
+}
+
+.message-bubble.right .sender-avatar {
+  left: auto;
+  right: 20px;
+  background: linear-gradient(135deg, var(--c-stone), var(--c-ochre));
+}
+
+/* ===================== SLOGAN GENERATOR EGG ===================== */
+.slogan-generator-section {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 4rem 2rem;
+  background: linear-gradient(135deg, #2C1810 0%, #1a0a05 50%, #3d1f14 100%);
+  overflow: hidden;
+}
+
+.slogan-generator-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='40' height='40' fill='%232C1810'/%3E%3Ccircle cx='20' cy='20' r='0.5' fill='%233d1f14' opacity='0.2'/%3E%3C/svg%3E");
+  opacity: 0.5;
+}
+
+.generator-card {
+  position: relative;
+  z-index: 10;
+  max-width: 600px;
+  width: 100%;
+  padding: 3rem 2.5rem;
+  background: rgba(245,230,211,0.95);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 0 1px rgba(139,0,0,0.1);
+  text-align: center;
+}
+
+.generator-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--c-red-deep), var(--c-red-bright), var(--c-ochre));
+  border-radius: 12px 12px 0 0;
+}
+
+.generator-title {
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--c-red-deep);
+  margin-bottom: 0.5rem;
+}
+
+.generator-subtitle {
+  font-size: 0.9rem;
+  color: var(--c-stone);
+  margin-bottom: 2rem;
+}
+
+.generator-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.generator-input {
+  padding: 1rem 1.25rem;
+  border: 2px solid rgba(139,0,0,0.15);
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  color: var(--c-ink);
+  background: #fff;
+  transition: all 0.3s;
+  outline: none;
+}
+
+.generator-input:focus {
+  border-color: var(--c-red-deep);
+  box-shadow: 0 0 0 3px rgba(139,0,0,0.1);
+}
+
+.generator-input::placeholder {
+  color: var(--c-stone);
+}
+
+.generator-btn {
+  padding: 1rem 2rem;
+  background: linear-gradient(135deg, var(--c-red-deep), var(--c-red-bright));
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  letter-spacing: 0.1em;
+  position: relative;
+  overflow: hidden;
+}
+
+.generator-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(139,0,0,0.3);
+}
+
+.generator-btn:active {
+  transform: translateY(0);
+}
+
+.generator-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.generator-btn:hover::after {
+  left: 100%;
+}
+
+.generator-result {
+  margin-top: 2rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, rgba(139,0,0,0.03), rgba(196,30,58,0.03));
+  border: 2px dashed rgba(139,0,0,0.15);
+  border-radius: 8px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.generator-result.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.generator-result .result-slogan {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--c-red-deep);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.generator-result .result-meta {
+  font-size: 0.85rem;
+  color: var(--c-stone);
+  margin-bottom: 1.5rem;
+}
+
+.generator-result .result-share {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  padding: 0.6rem 1.2rem;
+  border: 1px solid rgba(139,0,0,0.2);
+  background: #fff;
+  color: var(--c-red-deep);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: var(--font-sans);
+}
+
+.share-btn:hover {
+  background: var(--c-red-deep);
+  color: #fff;
+  border-color: var(--c-red-deep);
+}
+
+.typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.2em;
+  background: var(--c-red-deep);
+  animation: cursor-blink 0.8s step-end infinite;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+}
+
+/* Stamp effect for generated slogan */
+.stamp-effect {
+  position: relative;
+  display: inline-block;
+}
+
+.stamp-effect::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--c-red-deep);
+  border-radius: 50%;
+  opacity: 0.3;
+  transform: rotate(15deg);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle' font-size='8' fill='%238B0000' font-family='serif'%3E%E9%95%BF%E5%BE%81%3C/text%3E%3C/svg%3E") center/contain no-repeat;
+}
+
+/* ===================== MULTI-ROUTE MAP ===================== */
+.route-legend {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--c-stone);
+}
+
+.route-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.route-legend-dot {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* ===================== WALL EMERGE EFFECT ===================== */
+.wall-emerge-section {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 4rem 2rem;
+  background: linear-gradient(180deg, #1a0a05 0%, #2C1810 30%, #3d1f14 100%);
+  overflow: hidden;
+}
+
+.wall-texture {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 80%, rgba(139,0,0,0.1) 0%, transparent 50%),
+    url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100' height='100' fill='%231a0a05'/%3E%3Cpath d='M0 50 Q25 45 50 50 T100 50' stroke='%233d1f14' stroke-width='0.5' fill='none' opacity='0.1'/%3E%3Cpath d='M0 30 Q25 25 50 30 T100 30' stroke='%233d1f14' stroke-width='0.5' fill='none' opacity='0.08'/%3E%3C/svg%3E");
+}
+
+.wall-texture::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 50%, rgba(26,10,5,0.6) 100%);
+}
+
+.republican-paper {
+  position: relative;
+  z-index: 10;
+  max-width: 420px;
+  width: 90%;
+  padding: 3rem 2rem 3rem 2.5rem;
+  background: linear-gradient(180deg, #f4e8d0 0%, #e8d8b8 100%);
+  border: 1px solid rgba(139,0,0,0.12);
+  border-radius: 4px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.1);
+  opacity: 0;
+  transform: translateY(20px) rotate(-1deg);
+  transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.republican-paper.active {
+  opacity: 1;
+  transform: translateY(0) rotate(0deg);
+}
+
+.republican-paper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2rem;
+  width: 1px;
+  background: rgba(139,0,0,0.08);
+  box-shadow: 
+    1.5rem 0 0 rgba(139,0,0,0.06),
+    3rem 0 0 rgba(139,0,0,0.04),
+    4.5rem 0 0 rgba(139,0,0,0.03),
+    6rem 0 0 rgba(139,0,0,0.02),
+    7.5rem 0 0 rgba(139,0,0,0.01);
+}
+
+.republican-paper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  border-radius: 4px;
+}
+
+.republican-text {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  line-height: 2;
+  color: rgba(40,20,10,0.85);
+  position: relative;
+  z-index: 2;
+  padding: 2.5rem 2rem;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.republican-paper {
+  position: relative;
+  z-index: 10;
+  max-width: 600px;
+  width: 90%;
+  padding: 2rem 2.5rem 2.5rem;
+  background: linear-gradient(180deg, #f4e8d0 0%, #e8d8b8 100%);
+  border: 1px solid rgba(139,0,0,0.12);
+  border-radius: 4px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.1);
+  opacity: 0;
+  transform: translateY(20px) rotate(-1deg);
+  transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.republican-paper.active {
+  opacity: 1;
+  transform: translateY(0) rotate(0deg);
+}
+
+.republican-paper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(139,0,0,0.3) 15%, 
+    rgba(139,0,0,0.6) 50%, 
+    rgba(139,0,0,0.3) 85%, 
+    transparent 100%
+  );
+  border-radius: 2px 2px 0 0;
+}
+
+.republican-paper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 0.6;
+  border-radius: 4px;
+}
+
+.republican-masthead {
+  text-align: center;
+  border-bottom: 2px solid rgba(40,20,10,0.2);
+  padding-bottom: 0.8rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 2;
+}
+
+.republican-masthead-title {
+  font-family: var(--font-serif);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: rgba(40,20,10,0.9);
+  letter-spacing: 0.2em;
+  line-height: 1.2;
+  margin: 0 0 0.3rem;
+}
+
+.republican-masthead-sub {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  color: rgba(40,20,10,0.5);
+  letter-spacing: 0.15em;
+}
+
+.republican-headline {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--c-red-deep);
+  text-align: center;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+  position: relative;
+  z-index: 2;
+  letter-spacing: 0.05em;
+}
+
+.republican-headline::before,
+.republican-headline::after {
+  content: '';
+  display: block;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(139,0,0,0.3), transparent);
+  margin: 0.5rem 0;
+}
+
+.republican-columns {
+  column-count: 2;
+  column-gap: 1.5rem;
+  column-rule: 1px solid rgba(40,20,10,0.15);
+  text-align: justify;
+  position: relative;
+  z-index: 2;
+}
+
+.republican-columns p {
+  margin-bottom: 0.8rem;
+  text-indent: 2em;
+}
+
+.republican-columns p:first-child {
+  text-indent: 0;
+}
+
+.republican-columns p:first-child::first-letter {
+  font-family: var(--font-serif);
+  font-size: 2.5rem;
+  float: left;
+  line-height: 0.8;
+  margin-right: 0.3rem;
+  margin-top: 0.1rem;
+  color: var(--c-red-deep);
+  font-weight: 700;
+}
+
+.republican-text .highlight {
+  color: var(--c-red-deep);
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: 0.05em;
+}
+
+.republican-dateline {
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  color: rgba(40,20,10,0.5);
+  text-align: center;
+  margin-bottom: 1rem;
+  letter-spacing: 0.1em;
+  position: relative;
+  z-index: 2;
+}
+
+.wall-cracks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.15;
+}
+
+.wall-crack {
+  position: absolute;
+  width: 2px;
+  background: linear-gradient(to bottom, rgba(245,230,211,0.3), transparent);
+  transform-origin: top;
+}
+
+@media (max-width: 768px) {
+  .republican-paper {
+    padding: 1.5rem 1.2rem 2rem;
+    max-width: 95%;
+  }
+  .republican-text {
+    padding: 1.5rem 1rem;
+    font-size: 0.95rem;
+    line-height: 1.8;
+    letter-spacing: 0.1em;
+  }
+  .republican-columns {
+    column-count: 1;
+  }
+  .republican-masthead-title {
+    font-size: 1.4rem;
+  }
+  .republican-headline {
+    font-size: 1.05rem;
+  }
+}
+
+/* ===================== EASTER EGG TRIGGER ===================== */
+.easter-egg-trigger {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 100;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--c-red-deep), var(--c-red-bright));
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  box-shadow: 0 4px 15px rgba(139,0,0,0.3);
+  transition: all 0.3s;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.easter-egg-trigger.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.easter-egg-trigger:hover {
+  transform: translateY(-4px) scale(1.1);
+  box-shadow: 0 8px 25px rgba(139,0,0,0.4);
+}
+
+.easter-egg-trigger::before {
+  content: '生成你的红军标语';
+  position: absolute;
+  right: 60px;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  background: var(--c-charcoal);
+  color: var(--c-parchment);
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.easter-egg-trigger:hover::before {
+  opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .easter-egg-trigger::before {
+    display: none;
+  }
+  
+  .easter-egg-trigger {
+    bottom: 1rem;
+    right: 1rem;
+    width: 44px;
+    height: 44px;
+    font-size: 1rem;
+  }
+  
+  .generator-card {
+    padding: 2rem 1.5rem;
+  }
+  
+  .generator-title {
+    font-size: 1.35rem;
+  }
+  
+  .generator-result .result-slogan {
+    font-size: 1.2rem;
+  }
+  
+  .telegram-machine {
+    padding: 2rem 1.5rem;
+  }
+  
+  .telegram-text {
+    font-size: 1rem;
+  }
+  
+  .message-bubble-wrapper {
+    flex-direction: column;
+    gap: 2rem;
+  }
+  
+  .message-bubble-photo {
+    flex: 0 0 auto;
+    max-width: 280px;
+    order: -1;
+  }
+  
+  .bubble-photo-img {
+    max-height: 300px;
+  }
+  
+  .message-bubble {
+    padding: 1.5rem;
+  }
+  
+  .message-bubble .bubble-text {
+    font-size: 1.1rem;
+  }
+  
+  .emerge-slogan {
+    font-size: 1.25rem;
+  }
+}
+
+
+/* ===================== WORD CLOUD ===================== */
+.word-cloud-container {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  height: 400px;
+  margin: 0 auto;
+  background: rgba(255,255,255,0.5);
+  border-radius: 8px;
+  border: 1px solid rgba(139,0,0,0.08);
+  overflow: hidden;
+}
+
+.word-cloud-item {
+  position: absolute;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  cursor: default;
+  transition: all 0.3s;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.word-cloud-item:hover {
+  transform: scale(1.15);
+  z-index: 100;
+  text-shadow: 0 2px 10px rgba(139,0,0,0.2);
+}
+
+.word-cloud-legend {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.word-cloud-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--c-stone);
+}
+
+.word-cloud-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+
+<!-- Loading Screen -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-text">笔墨为枪</div>
+  <div class="loading-brush">
+    <div class="loading-brush-inner" id="loadingBar"></div>
+  </div>
+  <div style="margin-top:1rem;color:var(--c-stone);font-size:0.85rem;letter-spacing:0.2em;">正在展开历史长卷...</div>
+</div>
+
+<!-- Reading Progress -->
+<div class="reading-progress" id="readingProgress"></div>
+
+<!-- ===================== HERO ===================== -->
+<section class="hero-section" id="hero">
+  <div class="hero-wall" id="heroWall">
+    <video autoplay muted loop playsinline class="hero-video" id="heroVideo">
+      <source src="images/grassland.mp4" type="video/mp4">
+    </video>
+    <div class="hero-video-overlay"></div>
+  </div>
+  
+  <div class="hero-content">
+    <h1 class="hero-title" id="heroTitle">
+      <span class="title-main">九秩赓续</span>
+      <span>标语寻魂</span>
+    </h1>
+    <p class="hero-subtitle" id="heroSubtitle">长征红色标语向精神延伸的可视化实践</p>
+    <p class="hero-meta" id="heroMeta">1934 — 1936 · 长征</p>
+  </div>
+  
+  <div class="hero-scroll-hint" id="scrollHint">
+    <span>向下滚动</span>
+    <div class="scroll-arrow"></div>
+  </div>
+</section>
+
+<!-- ===================== TELEGRAM: YOU RECEIVED A MESSAGE ===================== -->
+<section class="telegram-section" id="telegram">
+  <div class="telegram-wall" id="telegramWall"></div>
+  
+  <div class="telegram-machine" id="telegramMachine">
+    <div class="telegram-envelope" id="telegramEnvelope">
+      <div class="telegram-stamp">机密<br>密件</div>
+      <div class="telegram-address">
+        <div class="telegram-address-line">收件人：每一位当代读者</div>
+        <div class="telegram-address-line">发件人：1934年的中国</div>
+        <div class="telegram-address-line"></div>
+      </div>
+      <div class="telegram-letter" id="telegramLetter">
+        <div class="telegram-header">
+          <div class="telegram-bulb"></div>
+          <div class="telegram-label">INCOMING TELEGRAM // 1934</div>
+        </div>
+        <div class="telegram-paper">
+          <div class="telegram-text" id="telegramText">
+            <span class="cursor">&nbsp;</span>
+          </div>
+          <div class="telegram-date" id="telegramDate">1934.10.09 00:00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="telegram-scroll-hint" id="telegramScrollHint">
+    <span>向下滚动，拆开这封信</span>
+    <div class="scroll-arrow"></div>
+  </div>
+</section>
+
+<!-- ===================== WALL EMERGE: 1934 SLOGANS ===================== -->
+<section class="wall-emerge-section" id="wallEmerge">
+  <div class="wall-texture"></div>
+  <div class="wall-cracks" id="wallCracks"></div>
+  
+  <div class="republican-paper" id="republicanPaper">
+    <div class="republican-masthead">
+      <div class="republican-masthead-title">红色长征</div>
+      <div class="republican-masthead-sub">ZHONG YANG SU QU DI SHI BAO · 中央苏区地下报</div>
+    </div>
+    <div class="republican-dateline">民国二十三年十月 · 第一版</div>
+    <div class="republican-headline" id="emergeSlogan1">
+      <span class="highlight">「长征」</span> —— 标语寻魂
+    </div>
+    <div class="republican-text">
+      <div class="republican-columns">
+        <p>民国二十三年十月，一支衣衫褴褛却眼神坚定的队伍，踏上了前途未卜的征途。他们不知道这将是一次载入史册的伟大远征，但他们知道，必须让沿途的百姓听懂他们的心声。</p>
+        <p>在枪林弹雨的间隙，在翻越雪山的疲惫中，在穿越草地的绝境里，红军战士们用木炭、石灰，甚至泥土，在墙壁上、门板上、岩石上，刻下了一句句振聋发聩的口号。</p>
+        <p>这些标语是指路的明灯，是冲锋的号角，更是红军与亿万民众之间最直抵人心的<span class="highlight">"暗号"</span>。它们写在山河之间，刻在民族记忆里，让革命的星火得以燎原。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== MESSAGE BUBBLE: THE SIGNAL ===================== -->
+<section class="message-bubble-section" id="messageBubble">
+  <div class="message-bubble-wrapper">
+    <div class="message-bubble-photo">
+      <img src="images/red_army_slogan.jpg" alt="红军战士书写标语" class="bubble-photo-img">
+      <div class="bubble-photo-caption">红军战士在墙壁上书写标语</div>
+    </div>
+    <div class="message-bubble-container">
+      <div class="message-bubble" id="bubble1">
+        <div class="bubble-text">
+          于是，一种最朴素也最有力的宣传方式应运而生。<br><br>
+          在枪林弹雨的间隙，在翻越雪山的疲惫中，在穿越草地的绝境里，<br>
+          红军战士们用木炭、石灰，甚至泥土，<br>
+          在墙壁上、门板上、岩石上，刻下了一句句振聋发聩的口号。
+        </div>
+        <div class="bubble-meta">1934.10 — 1936.10</div>
+        <div class="sender-avatar">红</div>
+      </div>
+      
+      <div class="message-bubble right" id="bubble2">
+        <div class="bubble-text">
+          它们是指路的明灯，<br>
+          是冲锋的号角，<br>
+          更是红军与亿万民众之间<br>
+          最直抵人心的<span style="color:var(--c-red-deep);">"暗号"</span>。
+        </div>
+        <div class="bubble-meta">—— 历史的回声</div>
+        <div class="sender-avatar">史</div>
+      </div>
+      
+      <div class="message-bubble" id="bubble3">
+        <div class="bubble-text">
+          90年后的现在，<br>
+          当我们再次擦亮这些红色印记，<br>
+          依然能听到那穿越时空的呐喊。
+        </div>
+        <div class="bubble-meta">2026</div>
+        <div class="sender-avatar">今</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CHAPTER 1: DEPARTURE IN THE DARK ===================== -->
+<section class="section-scrolly chapter1-video-bg" id="chapter1">
+  <video autoplay muted loop playsinline class="chapter1-video" id="chapter1Video">
+    <source src="images/announcement.mp4" type="video/mp4">
+  </video>
+  <div class="chapter1-video-overlay"></div>
+  <div class="max-w-wide mx-auto px-4 w-full" style="position:relative;z-index:2;">
+    <div class="scrolly-container">
+      <div class="scrolly-text">
+        <div class="chapter-label fly-in-bottom">第一章</div>
+        <h2 class="chapter-title fly-in-bottom">暗夜启程</h2>
+        <div class="text-block">
+          <p class="fly-in-bottom"><span class="date-caps">1934年10月</span>，由于"左"倾思想的错误影响，中央红军被迫实行战略转移。在军事压力巨大的背景下，宣传工作受到教条主义束缚，难以全面展开。</p>
+          <p class="fly-in-bottom">这一时期的标语大多延续了中央苏区的基本口号，如宣传土地革命、苏维埃政策等，内容相对笼统。史料指出，当时“在反映群众迫切要求方面还略显不足”。</p>
+          <p class="fly-in-bottom">然而，宣传工作并非毫无起点。1934年10月9日，红军总政治部发布了一份特殊指令——《关于准备长途行军与战斗的政治指令》。</p>
+          <p class="fly-in-bottom">这份文件明确要求各部队：“必须在沿途进行对群众的宣传工作……广泛的进行口头宣传，散发和张贴宣传品和在墙报上多写标语口号。”</p>
+          <p class="fly-in-bottom">这一天，长征标语宣传工作的正式启动，一场史无前例的“宣传战”就此拉开序幕。</p>
+        </div>
+      </div>
+      <div class="scrolly-visual route-map-wrapper">
+        <div id="departureViz" class="route-map-container">
+          <img src="images/route_map.jpg" alt="三大主力红军长征路线" class="route-map-img" id="routeMapImg">
+          <!-- Interactive hotspots will be added by JS -->
+          <div class="route-map-overlay" id="routeMapOverlay"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CHAPTER 2: BRUSH AND CHISEL AS WEAPONS ===================== -->
+<section class="section-fulltext" id="chapter2">
+  <div class="max-w-wide mx-auto px-4 relative" style="z-index:2;">
+    <div class="chapter-label fly-in-bottom">第二章</div>
+    <h2 class="chapter-title fly-in-bottom">笔墨为枪</h2>
+    
+    <div class="text-block" style="max-width:900px;">
+      <p class="fly-in-bottom">随着长征的推进，宣传工作开始通过竞赛机制激活全员参与，形式逐渐成熟。1934年11月25日，《红星报》转载《战士》报文章，红军总政治部发起声势浩大的“写标语竞赛”。</p>
+      <p class="fly-in-bottom">这是长征标语宣传工作的重大转折点。史料详细记载了竞赛要求：“凡是能写字的战士每人练习写熟一条至十条标语”、“各连队每天写的标语数目要报告政治处统计起来”。</p>
+      <p class="fly-in-bottom">这种量化管理模式极大激发了战士们的热情，甚至出现了“宣传员夜里打火把写标语”的现象。写标语从宣传员的专职任务转变为全体红军指战员的自觉行动。</p>
+    </div>
+    
+    <!-- Organization Chart -->
+    <div class="viz-container mb-8 fly-in-bottom" id="orgChart"></div>
+    <p class="viz-caption fly-in-bottom">红军标语宣传组织架构</p>
+    
+    <div class="text-block mt-8" style="max-width:900px;">
+      <p class="fly-in-bottom">遵义会议确立了实事求是的思想路线后，标语宣传工作开始紧密贴合中国革命实际和广大群众需求。1935年2月，总政治部发布《关于各部队立即动员遍写标语命令》，要求“从连队到军团的军队干部以身作则自己动手写”。</p>
+      <p class="fly-in-bottom">这标志着标语工作已升格为军队的“战斗任务”。1935年6月，总政治部发布《渡过大渡河后适用的标语口号》，共分十类93条之多，标志着标语口号体系化。</p>
+    </div>
+    
+    <!-- Competition Data -->
+    <div class="grid-2 mt-8 mb-8">
+      <div class="counter-box fly-in-bottom">
+        <span class="counter-number" data-target="14800">0</span>
+        <div class="counter-label">两天书写标语（条）</div>
+      </div>
+      <div class="counter-box fly-in-bottom">
+        <span class="counter-number" data-target="600">0</span>
+        <div class="counter-label">直属队三天书写（条）</div>
+      </div>
+    </div>
+    
+    <div class="text-block" style="max-width:900px;">
+      <p class="fly-in-bottom">由于全员参与和制度保障，标语数量激增。史料中出现了“锋部两天写了1万条”、“山西在两天之内共写了14800多条标语”的纪录。同时，针对少数民族地区和抗日新形势，党和红军制定了《中国工农红军布告》等专门口号，宣传民族平等和北上抗日方针。</p>
+    </div>
+    
+    <!-- 7000+ Slogans Highlight Section -->
+    <div class="section-fulltext" style="min-height: auto; padding: 4rem 2rem; background: linear-gradient(180deg, #2C1810 0%, #1a0a05 100%); margin-top: 3rem; border-radius: 8px;">
+      <div class="max-w-prose mx-auto px-4 text-center">
+        <div class="counter-box fly-in-bottom">
+          <span class="counter-number" data-target="7000" style="color: var(--c-red-bright); font-size: clamp(4rem, 12vw, 8rem);">0</span>
+          <div class="counter-label" style="color: rgba(245,230,211,0.7); font-size: 1rem;">现存完整标语（条）</div>
+        </div>
+        <div class="text-block fly-in-bottom" style="color: rgba(245,230,211,0.8); margin-top: 2rem;">
+          <p>这些标语是长征精神最原生的文字载体。每一条标语都曾在某一面墙上、某一块岩石上，被某个无名战士用木炭或石灰写下。它们穿越九十年的风雨，依然清晰可见。</p>
+        </div>
+        <div class="divider-brush" style="margin: 2rem auto; background: linear-gradient(90deg, transparent, var(--c-red-bright), transparent);"></div>
+        <p class="fly-in-bottom" style="color: rgba(245,230,211,0.5); font-size: 0.85rem; letter-spacing: 0.2em;">它们写在山河之间，刻在民族记忆里</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CHAPTER 3: WRITTEN ON MOUNTAINS AND RIVERS ===================== -->
+<section class="section-scrolly chapter3-video-bg" id="chapter3">
+  <video autoplay muted loop playsinline class="chapter3-video" id="chapter3Video">
+    <source src="images/write_slogan.mp4" type="video/mp4">
+  </video>
+  <div class="chapter3-video-overlay"></div>
+  <div class="max-w-wide mx-auto px-4 w-full" style="position:relative;z-index:2;">
+    <div class="scrolly-container">
+      <div class="scrolly-visual">
+        <div id="provinceMap" class="province-map-container">
+          <img src="images/china_map_bg.jpg" alt="长征路线省份分布" class="province-map-img" id="provinceMapImg">
+          <div class="province-map-overlay" id="provinceMapOverlay"></div>
+        </div>
+      </div>
+      <div class="scrolly-text">
+        <div class="chapter-label fly-in-bottom">第三章</div>
+        <h2 class="chapter-title fly-in-bottom">写在山河之间</h2>
+        <div class="text-block">
+          <p class="fly-in-bottom">红军在转战十一个省的过程中，留下了数以百万计的宣传标语和文告。</p>
+          <p class="fly-in-bottom">这些标语写在民居土墙、山崖石壁、寺庙梁柱、农家木板、渡口石桥之上。书写的材料有墨水、锅灰水、石灰水、泥巴水。</p>
+          <p class="fly-in-bottom">时至今日，散落在长征沿线、被完整保存下来的标语仍有7000多条。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CHAPTER 4: FIVE LEGACIES ===================== -->
+<section class="section-fulltext chapter4-video-bg" id="chapter4">
+  <video autoplay muted loop playsinline class="chapter4-video" id="chapter4Video">
+    <source src="images/museum.mp4" type="video/mp4">
+  </video>
+  <div class="chapter4-video-overlay"></div>
+  <div class="max-w-wide mx-auto px-4 relative" style="z-index:2;">
+    <div class="chapter-label fly-in-bottom">第四章</div>
+    <h2 class="chapter-title fly-in-bottom">五脉赓续</h2>
+    <p class="text-block text-center mb-8 fly-in-bottom" style="max-width:600px;">这些标语能够穿越九十年风雨留存至今，靠的是五种传承方式的接力守护。</p>
+    
+    <div class="grid-5 mb-8">
+      <div class="legacy-card fly-in-bottom" data-legacy="1">
+        <div class="legacy-number">01</div>
+        <div class="legacy-title">原址实物</div>
+        <div class="legacy-desc">岩壁、墙壁、门板、桥梁原地保存，玻璃罩防护、保护亭围挡</div>
+      </div>
+      <div class="legacy-card fly-in-bottom" data-legacy="2">
+        <div class="legacy-number">02</div>
+        <div class="legacy-title">民间隐匿</div>
+        <div class="legacy-desc">百姓用黄泥、稻草、旧报纸遮盖封存，等时局稳定后清理复原</div>
+      </div>
+      <div class="legacy-card fly-in-bottom" data-legacy="3">
+        <div class="legacy-number">03</div>
+        <div class="legacy-title">文献档案</div>
+        <div class="legacy-desc">油印传单、政治部文件、战地日记、电报行军报告收录</div>
+      </div>
+      <div class="legacy-card fly-in-bottom" data-legacy="4">
+        <div class="legacy-number">04</div>
+        <div class="legacy-title">口述整理</div>
+        <div class="legacy-desc">文史工作者深入沿线村落，采访亲历老人还原已毁标语</div>
+      </div>
+      <div class="legacy-card fly-in-bottom" data-legacy="5">
+        <div class="legacy-number">05</div>
+        <div class="legacy-title">普查建档</div>
+        <div class="legacy-desc">多轮文物普查田野采集，拍照拓印、文字抄录、数字化扫描</div>
+      </div>
+    </div>
+    
+    <!-- Legacy detail popup trigger area -->
+    <div class="text-center mt-8 fly-in-bottom">
+      <p style="color:var(--c-stone);font-size:0.9rem;">点击上方卡片，查看每一种传承方式的守护故事</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CHAPTER 5: VOICES OF MILLIONS ===================== -->
+<section class="section-fulltext" id="chapter5">
+  <div class="max-w-wide mx-auto px-4 relative" style="z-index:2;">
+    <div class="chapter-label fly-in-bottom">第五章</div>
+    <h2 class="chapter-title fly-in-bottom">千万条心声</h2>
+    <p class="text-block text-center mb-8 fly-in-bottom" style="max-width:600px;">长征标语宣传内容丰富，涵盖政治、军事、经济、文化、生活方方面面，主要可分为14大类。</p>
+    
+    <!-- Category Visualization -->
+    <div class="viz-container mb-4 fly-in-bottom" id="categoryViz"></div>
+    <p class="viz-caption fly-in-bottom mb-8">长征标语内容分类占比</p>
+    
+    <!-- Word Cloud -->
+    <div class="mt-8 fly-in-bottom">
+      <h3 class="font-serif text-center mb-4" style="font-size:1.5rem;color:var(--c-red-deep);">标语词云</h3>
+      <p class="text-center mb-4" style="color:var(--c-stone);font-size:0.85rem;">高频关键词，越大代表出现越频繁</p>
+      <div class="word-cloud-container" id="wordCloud"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CHAPTER 6: CHARACTERS BEHIND THE SLOGANS ===================== -->
+<section class="section-dark section-fulltext" id="chapter6">
+  <div class="max-w-prose mx-auto px-4 relative" style="z-index:2;">
+    <div class="chapter-label fly-in-bottom">第六章</div>
+    <h2 class="chapter-title fly-in-bottom">标语里的人物</h2>
+    
+    <div class="character-intro fly-in-bottom">
+      <div class="portrait-frame"><img src="images/liu_ruilong.jpg" alt="刘瑞龙" class="portrait-img"></div>
+      <div>
+        <h3 class="font-serif" style="font-size:1.5rem;color:var(--c-parchment);margin-bottom:0.5rem;">刘瑞龙</h3>
+        <p style="color:rgba(245,230,211,0.7);font-size:0.9rem;">中共川陕省委宣传部部长</p>
+      </div>
+    </div>
+    
+    <div class="text-block">
+      <p class="fly-in-bottom">刘瑞龙刚任中共川陕省委宣传部部长时，川陕苏区严重缺乏纸张，无法大量编印资料和发行报刊。他在周边调查时，见大巴山地区高林密石，墓碑庙宇成群，想到了因地制宜的办法。</p>
+      
+      <div class="quote-block fly-in-bottom">
+        他将部队里20多名"秀才""石匠"召集起来，让他们带头成立书写队和錾字队，"你们的任务就是把党的革命纲领，红军的宗旨和纪律等錾刻到石头上，'烙到'劳苦大众的脑子里，'插进'敌人的心窝子。"
+        <div class="quote-author">—— 龚道勇回忆</div>
+      </div>
+      
+      <p class="fly-in-bottom">记者走在通江县各地，石刻标语随处可见。在高山石壁、道路两旁、祠堂庙宇、居民宅院，錾字队几乎利用了一切可以刻字的地方，将标语留在山崖、石壁、墓碑、石柱、门廊、墙壁等地，甚至柱礅、房基石、磨盘、水缸之处。</p>
+    </div>
+    
+    <div class="divider-brush"></div>
+    
+    <div class="character-intro fly-in-bottom">
+      <div class="portrait-frame" style="border-color:var(--c-ochre);"><img src="images/wang_xiaoyun.jpg" alt="王孝云" class="portrait-img"></div>
+      <div>
+        <h3 class="font-serif" style="font-size:1.5rem;color:var(--c-parchment);margin-bottom:0.5rem;">王孝云一家</h3>
+        <p style="color:rgba(245,230,211,0.7);font-size:0.9rem;">四川泸定县普通农户</p>
+      </div>
+    </div>
+    
+    <div class="text-block">
+      <p class="fly-in-bottom">1935年11月，红军长征经过四川泸定县岚安乡昂州村，时任红九团地方工作部部长朱明在村民王孝云家的白石灰院墙上写了一副4米长、2米高的标语，正中书写着《共产党十大纲领》，两边是表现战斗场景的漫画。</p>
+      
+      <p class="fly-in-bottom">12月，国民党军队进攻岚安后，王孝云冒着枪林弹雨，码起柴火盖住了标语，临终前还嘱咐妻子和女儿王翠珍把标语保护好。改革开放后，王翠珍和儿子怕损坏标语墙，打消了盖新房的念头，一直住在祖辈留下的土坯房子里。</p>
+      
+      <div class="slogan-protection-img fly-in-bottom">
+        <img src="images/slogan_wall_protection.png" alt="泸定县王孝云家保护的红军标语墙" class="protection-img">
+        <div class="protection-caption">泸定县岚安乡昂州村王孝云家保存的红军标语墙</div>
+      </div>
+      
+      <p class="fly-in-bottom">从此，王翠珍一家三代人70载精心呵护红军标语墙的故事广为流传。正是由于红军时刻心怀少数民族群众，竭尽所能保护他们的各项权益，从而赢得人民的拥护与爱戴。许多百姓冒着生命危险保护红军标语，这正是标语精神力量穿越时空的最佳证明。</p>
+      
+      <div class="quote-block fly-in-bottom">
+        为了贴近群众，錾字队采用大巴山地区的方言俚语。这些标语简单易懂、富于感染力，把党的政策方针口语化、本土化，有效地动员了当地百姓投身土地革命。
+        <div class="quote-author">—— 《通江红军石刻标语群》</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CHAPTER 7: FROM SLOGANS TO SPIRIT ===================== -->
+<section class="section-fulltext" id="chapter7">
+  <div class="max-w-wide mx-auto px-4 relative" style="z-index:2;">
+    <div class="chapter-label fly-in-bottom">第七章</div>
+    <h2 class="chapter-title fly-in-bottom">从标语到精神</h2>
+    <p class="text-block text-center mb-8 fly-in-bottom" style="max-width:700px;">长征路上留存的石刻、土墙、木板标语，是伟大长征精神最具象、最原生的文字载体。习近平总书记在2016年纪念红军长征胜利80周年大会上完整定义了五层伟大长征精神。</p>
+    
+    <div class="grid-1" style="max-width:800px;margin:0 auto;">
+      <div class="spirit-node fly-in-bottom">
+        <div class="node-title">一、民族利益至上，坚守革命理想信念</div>
+        <div class="node-slogan">"只有苏维埃才能救中国"</div>
+        <p style="font-size:0.9rem;color:var(--c-stone);">三条标语跳出局部工农诉求，直面近代民族危亡现实，将民族独立、救国救民作为红军核心使命。</p>
+      </div>
+      
+      <div class="spirit-node fly-in-bottom">
+        <div class="node-title">二、不惧艰险，甘愿牺牲救国救民</div>
+        <div class="node-slogan">"乌江天险，挡不住红军飞渡"</div>
+        <p style="font-size:0.9rem;color:var(--c-stone);">该类标语诞生于雪山、江河、激战阵地等极端艰苦环境，直白书写红军直面饥寒、绝境、战火的无畏意志。</p>
+      </div>
+      
+      <div class="spirit-node fly-in-bottom">
+        <div class="node-title">三、独立自主、实事求是，一切从实际出发</div>
+        <div class="node-slogan">"红军绝对保护傜民、回民、番民，民族平等"</div>
+        <p style="font-size:0.9rem;color:var(--c-stone);">红军没有套用统一宣传模板，而是依据途经地区民情定制标语，充分体现党独立自主制定政策、实事求是的工作路线。</p>
+      </div>
+      
+      <div class="spirit-node fly-in-bottom">
+        <div class="node-title">四、顾全大局、严守纪律、紧密团结</div>
+        <div class="node-slogan">"红军不拿群众一针一线"</div>
+        <p style="font-size:0.9rem;color:var(--c-stone);">全域统一的纪律标语规范全军行为、凝聚集体团结意识；整套标语体系完整承载严守纪律、军民团结、统筹全局的精神内核。</p>
+      </div>
+      
+      <div class="spirit-node fly-in-bottom">
+        <div class="node-title">五、依靠群众，生死相依、艰苦奋斗</div>
+        <div class="node-slogan">"红军到，干人笑，绅粮叫；要使干人天天笑，红军不离开"</div>
+        <p style="font-size:0.9rem;color:var(--c-stone);">长征沿线超60%留存标语面向底层劳苦群众，全部围绕百姓分田、减负、生存诉求展开。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CHAPTER 8: IMPACT ===================== -->
+<section class="section-dark section-fulltext" id="chapter8">
+  <div class="max-w-prose mx-auto px-4 relative" style="z-index:2;">
+    <div class="chapter-label fly-in-bottom">第八章</div>
+    <h2 class="chapter-title fly-in-bottom">标语的力量</h2>
+    
+    <div class="text-block">
+      <h3 class="font-serif fly-in-bottom" style="font-size:1.5rem;color:var(--c-red-bright);margin:2rem 0 1rem;">对内：鼓舞士气的"兴奋剂"</h3>
+      <p class="fly-in-bottom">在极度艰难困苦的环境中，口号是红军战士的精神支柱。</p>
+      
+      <div class="gallery-scroll fly-in-bottom" id="sloganGallery1">
+        <div class="gallery-item">
+          <div class="slogan-text">"突破乌江，到遵义去过年"</div>
+          <p style="font-size:0.85rem;color:var(--c-stone);margin-top:0.5rem;">战斗动员</p>
+        </div>
+        <div class="gallery-item">
+          <div class="slogan-text">"轻伤不下火线，重伤不哭"</div>
+          <p style="font-size:0.85rem;color:var(--c-stone);margin-top:0.5rem;">娄山关战斗</p>
+        </div>
+        <div class="gallery-item">
+          <div class="slogan-text">"大雪山不算大，最高不过七十八，算个啥"</div>
+          <p style="font-size:0.85rem;color:var(--c-stone);margin-top:0.5rem;">爬雪山</p>
+        </div>
+        <div class="gallery-item">
+          <div class="slogan-text">"不怕肚子饿，就怕敌人跑"</div>
+          <p style="font-size:0.85rem;color:var(--c-stone);margin-top:0.5rem;">腊子口战斗</p>
+        </div>
+      </div>
+      
+      <h3 class="font-serif fly-in-bottom" style="font-size:1.5rem;color:var(--c-red-bright);margin:2rem 0 1rem;">对外：争取民心的"黏合剂"</h3>
+      <p class="fly-in-bottom">红军所到之处，多是国民党统治的偏远地区，百姓深受反动宣传的蒙蔽。标语口号成为红军与百姓沟通的桥梁。</p>
+      
+      <div class="gallery-scroll fly-in-bottom" id="sloganGallery2">
+        <div class="gallery-item">
+          <div class="slogan-text">"红军是工农自己的军队"</div>
+          <p style="font-size:0.85rem;color:var(--c-stone);margin-top:0.5rem;">建立认同</p>
+        </div>
+        <div class="gallery-item">
+          <div class="slogan-text">"红军到，干人笑；白军到，干人叫"</div>
+          <p style="font-size:0.85rem;color:var(--c-stone);margin-top:0.5rem;">鲜明对比</p>
+        </div>
+        <div class="gallery-item">
+          <div class="slogan-text">"苗人汉人一律平等"</div>
+          <p style="font-size:0.85rem;color:var(--c-stone);margin-top:0.5rem;">民族团结</p>
+        </div>
+        <div class="gallery-item">
+          <div class="slogan-text">"欢迎白军弟兄拖枪过来当红军"</div>
+          <p style="font-size:0.85rem;color:var(--c-stone);margin-top:0.5rem;">瓦解敌军</p>
+        </div>
+      </div>
+      
+      <h3 class="font-serif fly-in-bottom" style="font-size:1.5rem;color:var(--c-red-bright);margin:2rem 0 1rem;">长远：播撒火种的"播种机"</h3>
+      <p class="fly-in-bottom">标语直接催生了踊跃参军的浪潮。红二方面军攻占毕节后，一次就扩充红军3000多人。</p>
+      
+      <div class="quote-block fly-in-bottom">
+        长征是宣言书，长征是宣传队，长征是播种机。
+        <div class="quote-author">—— 毛泽东</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== ENDING: CONTINUATION ===================== -->
+<section class="ending-section" id="ending">
+  <video class="ending-video" id="endingVideo" autoplay muted loop playsinline poster="">
+    <source src="./images/ke_biaoyu.mp4" type="video/mp4">
+  </video>
+  <div class="ending-video-overlay"></div>
+  <div class="ending-fireflies" id="fireflies"></div>
+  
+  <div class="relative" style="z-index:2;text-align:center;padding:2rem;">
+    <div class="chapter-label fly-in-bottom" style="color:var(--c-red-bright);">尾声</div>
+    <h2 class="chapter-title fly-in-bottom" style="color:var(--c-parchment);">赓续</h2>
+    
+    <div class="text-block fly-in-bottom" style="color:rgba(245,230,211,0.8);max-width:800px;margin-left:auto;margin-right:auto;">
+      <p>2016年10月21日，习近平总书记在纪念红军长征胜利80周年大会上指出：</p>
+      
+      <div class="quote-block fly-in-bottom" style="border-left-color:var(--c-red-bright);background:rgba(60,10,10,0.85);font-weight:700;letter-spacing:0.05em;color:#fff;text-indent:2em;text-align:justify;">
+        每一代人有每一代人的长征路，每一代人都要走好自己的长征路。今天，我们这一代人的长征，就是要实现"两个一百年"奋斗目标、实现中华民族伟大复兴的中国梦。
+      </div>
+      
+      <p>2021年9月，长征精神被纳入中国共产党人精神谱系。</p>
+      <p>遍布万里长征路的石刻、土墙、木板标语，并非零散宣传文字，而是伟大长征精神生成、落地、传播的核心媒介。一条标语对应一重精神内涵，千万条扎根土地的真实口号，共同完成了长征精神从军队实践到全民族宝贵精神财富的沉淀与塑造。</p>
+    </div>
+    
+    <div class="divider-brush" style="margin:3rem auto;"></div>
+    
+    <p class="fly-in-bottom" style="color:rgba(245,230,211,0.5);font-size:0.85rem;letter-spacing:0.3em;">九秩赓续 · 标语寻魂 · 2026</p>
+    
+    <!-- Slogan Wall - moved to ending -->
+    <div class="mt-12 fly-in-bottom" style="width:100%;">
+      <h3 class="font-serif text-center mb-4" style="font-size:1.5rem;color:var(--c-parchment);opacity:0.9;">标语长河</h3>
+      <p class="text-center mb-4" style="color:rgba(245,230,211,0.5);font-size:0.85rem;">鼠标悬停，聆听来自90年前的声音</p>
+      <div class="wall-grid" id="sloganWall" style="padding:1rem 0;"></div>
+    </div>
+    
+    <div style="margin-top:3rem;opacity:0;transform:translateY(20px);" class="fly-in-bottom">
+      <button id="goToGenerator" style="
+        padding: 0.75rem 2rem;
+        background: transparent;
+        border: 1px solid rgba(196,30,58,0.5);
+        color: var(--c-red-bright);
+        font-family: var(--font-sans);
+        font-size: 0.85rem;
+        letter-spacing: 0.2em;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: all 0.3s;
+      " onmouseover="this.style.background='rgba(196,30,58,0.1)';this.style.borderColor='var(--c-red-bright)';" onmouseout="this.style.background='transparent';this.style.borderColor='rgba(196,30,58,0.5)';">
+        生成你的红军标语 →
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SLOGAN GENERATOR EASTER EGG ===================== -->
+<section class="slogan-generator-section" id="sloganGenerator">
+  <div class="generator-card">
+    <div class="generator-title">生成你的红军标语</div>
+    <div class="generator-subtitle">输入你的名字和家乡，生成一段专属于你的长征标语</div>
+    
+    <div class="generator-input-group">
+      <input type="text" class="generator-input" id="genName" placeholder="你的名字（如：张三）" maxlength="10">
+      <input type="text" class="generator-input" id="genHometown" placeholder="你的家乡（如：江西）" maxlength="10">
+    </div>
+    
+    <button class="generator-btn" id="genBtn">生成标语</button>
+    
+    <div class="generator-result" id="genResult">
+      <div class="result-slogan" id="resultSlogan"></div>
+      <div class="result-meta" id="resultMeta"></div>
+      <div class="result-share">
+        <button class="share-btn" id="copyBtn">复制标语</button>
+        <button class="share-btn" id="regenerateBtn">重新生成</button>
+      </div>
+    </div>
+    
+    <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px dashed rgba(139,0,0,0.15);">
+      <p style="font-size:0.8rem;color:var(--c-stone);line-height:1.6;">
+        基于历史真实标语模板生成，仅供学习交流使用。<br>
+        让我们一起传承长征精神，走好新时代的长征路。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- Info Modal -->
+<div class="info-modal" id="infoModal">
+  <div class="info-modal-content">
+    <button class="info-modal-close" id="modalClose">&times;</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Register ScrollTrigger
+  gsap.registerPlugin(ScrollTrigger);
+
+    // ===================== LOADING SCREEN =====================
+  var loadingBar = document.getElementById('loadingBar');
+  var loadProgress = 0;
+  var loadInterval = setInterval(function() {
+    loadProgress += 10;
+    if (loadProgress >= 100) {
+      loadProgress = 100;
+      clearInterval(loadInterval);
+      setTimeout(function() {
+        var ls = document.getElementById('loadingScreen');
+        if (ls) ls.classList.add('hidden');
+        if (typeof initAnimations === 'function') initAnimations();
+      }, 300);
+    }
+    if (loadingBar) loadingBar.style.width = loadProgress + '%';
+  }, 50);
+  
+  // Force hide loading screen after 3 seconds max
+  setTimeout(function() {
+    var ls = document.getElementById('loadingScreen');
+    if (ls && ls.style.display !== 'none') {
+      ls.classList.add('hidden');
+      if (typeof initAnimations === 'function') initAnimations();
+    }
+  }, 3000);
+
+  // ===================== MUSIC CONTROL =====================
+  const bgMusic = document.getElementById('bgMusic');
+  const musicBtn = document.getElementById('musicBtn');
+  let autoPlayAttempted = false;
+
+  function updateMusicBtn() {
+    if (!musicBtn || !bgMusic) return;
+    if (bgMusic.paused) {
+      // 暂停状态：显示 ▶ 播放按钮
+      musicBtn.classList.remove('playing');
+      musicBtn.classList.add('paused');
+      musicBtn.innerHTML = '&#9654;'; // 三角形播放图标
+      musicBtn.title = '点击播放音乐';
+    } else {
+      // 播放状态：显示 ⏸ 暂停按钮
+      musicBtn.classList.add('playing');
+      musicBtn.classList.remove('paused');
+      musicBtn.innerHTML = '<span style="display:flex;gap:2px;align-items:center;justify-content:center;height:14px;"><span style="display:inline-block;width:4px;height:14px;background:currentColor;border-radius:1px;"></span><span style="display:inline-block;width:4px;height:14px;background:currentColor;border-radius:1px;"></span></span>';
+      musicBtn.title = '点击暂停音乐';
+    }
+  }
+
+  function tryPlayMusic() {
+    if (!bgMusic) return;
+    bgMusic.volume = 0.4;
+    bgMusic.play().then(() => {
+      updateMusicBtn();
+    }).catch(() => {
+      // 浏览器阻止自动播放，保持暂停状态
+      updateMusicBtn();
+    });
+  }
+
+  function toggleMusic() {
+    if (!bgMusic) return;
+    if (bgMusic.paused) {
+      tryPlayMusic();
+    } else {
+      bgMusic.pause();
+      updateMusicBtn();
+    }
+  }
+
+  if (musicBtn) {
+    musicBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      toggleMusic();
+    });
+  }
+
+  // 尝试自动播放一次（加载后500ms）
+  setTimeout(() => {
+    if (!autoPlayAttempted) {
+      autoPlayAttempted = true;
+      tryPlayMusic();
+    }
+  }, 500);
+
+  // 用户第一次交互时尝试播放（如果还没成功）
+  function onFirstInteraction() {
+    if (!autoPlayAttempted) {
+      autoPlayAttempted = true;
+      tryPlayMusic();
+    }
+    window.removeEventListener('scroll', onFirstInteraction, { passive: true });
+    document.removeEventListener('click', onFirstInteraction);
+    document.removeEventListener('touchstart', onFirstInteraction);
+  }
+  window.addEventListener('scroll', onFirstInteraction, { passive: true });
+  document.addEventListener('click', onFirstInteraction);
+  document.addEventListener('touchstart', onFirstInteraction);
+
+  // 监听音频实际状态变化，确保按钮同步
+  if (bgMusic) {
+    bgMusic.addEventListener('play', updateMusicBtn);
+    bgMusic.addEventListener('pause', updateMusicBtn);
+    bgMusic.addEventListener('ended', () => {
+      bgMusic.currentTime = 0;
+      bgMusic.play().catch(() => {});
+    });
+  }
+
+  // 初始化按钮状态
+  updateMusicBtn();
+
+  // ===================== READING PROGRESS =====================
+  const progressBar = document.getElementById('readingProgress');
+  window.addEventListener('scroll', () => {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = (scrollTop / docHeight) * 100;
+    progressBar.style.width = progress + '%';
+  }, { passive: true });
+
+  // ===================== HERO ANIMATIONS =====================
+  // Dust particles
+  const heroWall = document.getElementById('heroWall');
+  for (let i = 0; i < 30; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'dust-particle';
+    const size = Math.random() * 4 + 1;
+    particle.style.width = size + 'px';
+    particle.style.height = size + 'px';
+    particle.style.left = Math.random() * 100 + '%';
+    particle.style.top = Math.random() * 100 + '%';
+    particle.style.animationDuration = (Math.random() * 8 + 6) + 's';
+    particle.style.animationDelay = (Math.random() * 5) + 's';
+    heroWall.appendChild(particle);
+  }
+
+  // Hero entrance animation
+  gsap.to('#heroBadge', { opacity: 1, y: 0, duration: 1, delay: 0.5, ease: 'power3.out' });
+  gsap.to('#heroTitle', { opacity: 1, y: 0, duration: 1.2, delay: 0.8, ease: 'power3.out' });
+  gsap.to('#heroSubtitle', { opacity: 1, y: 0, duration: 1, delay: 1.2, ease: 'power3.out' });
+  gsap.to('#heroMeta', { opacity: 1, y: 0, duration: 1, delay: 1.5, ease: 'power3.out' });
+  gsap.to('#scrollHint', { opacity: 1, y: 0, duration: 1, delay: 2, ease: 'power3.out' });
+
+  // Hero mouse parallax
+  const heroSection = document.getElementById('hero');
+  heroSection.addEventListener('mousemove', (e) => {
+    const x = (e.clientX / window.innerWidth - 0.5) * 20;
+    const y = (e.clientY / window.innerHeight - 0.5) * 20;
+    gsap.to('#heroTitle', { x: x, y: y, duration: 0.5, ease: 'power2.out' });
+    gsap.to('#heroSubtitle', { x: x * 0.5, y: y * 0.5, duration: 0.5, ease: 'power2.out' });
+  });
+
+  // Scroll hint fade out
+  ScrollTrigger.create({
+    trigger: '#hero',
+    start: 'top top',
+    end: '20% top',
+    onUpdate: (self) => {
+      gsap.set('#scrollHint', { opacity: 1 - self.progress });
+    }
+  });
+
+  // ===================== INIT ANIMATIONS =====================
+  function initAnimations() {
+    // Hero video fade-in
+    const heroVideo = document.getElementById('heroVideo');
+    if (heroVideo) {
+      heroVideo.addEventListener('loadeddata', () => {
+        heroVideo.classList.add('loaded');
+      });
+      // Fallback if already loaded
+      if (heroVideo.readyState >= 2) {
+        heroVideo.classList.add('loaded');
+      }
+    }
+
+    // Chapter 1 video fade-in
+    const chapter1Video = document.getElementById('chapter1Video');
+    if (chapter1Video) {
+      chapter1Video.addEventListener('loadeddata', () => {
+        chapter1Video.classList.add('loaded');
+      });
+      if (chapter1Video.readyState >= 2) {
+        chapter1Video.classList.add('loaded');
+      }
+    }
+
+    // Chapter 3 video fade-in
+    const chapter3Video = document.getElementById('chapter3Video');
+    if (chapter3Video) {
+      chapter3Video.addEventListener('loadeddata', () => {
+        chapter3Video.classList.add('loaded');
+      });
+      if (chapter3Video.readyState >= 2) {
+        chapter3Video.classList.add('loaded');
+      }
+    }
+
+    // Chapter 4 video fade-in
+    const chapter4Video = document.getElementById('chapter4Video');
+    if (chapter4Video) {
+      chapter4Video.addEventListener('loadeddata', () => {
+        chapter4Video.classList.add('loaded');
+      });
+      if (chapter4Video.readyState >= 2) {
+        chapter4Video.classList.add('loaded');
+      }
+    }
+
+    // Ending video background
+    const endingVideo = document.getElementById('endingVideo');
+    if (endingVideo) {
+      endingVideo.addEventListener('loadeddata', () => {
+        endingVideo.classList.add('loaded');
+      });
+      if (endingVideo.readyState >= 2) {
+        endingVideo.classList.add('loaded');
+      }
+    }
+
+
+    // Fly-in animations for all sections
+    const flyElements = document.querySelectorAll('.fly-in-bottom');
+    flyElements.forEach((el, i) => {
+      gsap.fromTo(el, 
+        { opacity: 0, y: 60 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.8,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: el,
+            start: 'top 85%',
+            toggleActions: 'play none none none'
+          }
+        }
+      );
+    });
+
+    // Counter animation
+    const counters = document.querySelectorAll('.counter-number');
+    counters.forEach(counter => {
+      const target = parseInt(counter.getAttribute('data-target'));
+      ScrollTrigger.create({
+        trigger: counter,
+        start: 'top 80%',
+        onEnter: () => {
+          gsap.to(counter, {
+            innerText: target,
+            duration: 2,
+            snap: { innerText: 1 },
+            ease: 'power2.out',
+            onUpdate: function() {
+              counter.innerText = Math.round(this.targets()[0].innerText).toLocaleString();
+            }
+          });
+        },
+        once: true
+      });
+    });
+
+    // Chapter 1: Departure visualization
+    createDepartureViz();
+
+    // Chapter 3: Province map
+    createProvinceMap();
+
+    // Chapter 4: Legacy cards modal
+    initLegacyCards();
+
+    // Chapter 5: Category visualization + Word cloud + Slogan wall
+    createCategoryViz();
+    createWordCloud();
+    createSloganWall();
+
+    // Chapter 8: Fireflies
+    createFireflies();
+
+    // Ink spread effect
+    initInkSpread();
+  }
+
+  // ===================== DEPARTURE VISUALIZATION =====================
+  function createDepartureViz() {
+    const container = document.getElementById('departureViz');
+    if (!container) return;
+    // DON'T clear the whole container - the image is inside it!
+    // container.innerHTML = '';
+
+    const overlay = document.getElementById('routeMapOverlay');
+    if (!overlay) return;
+    overlay.innerHTML = '';
+
+    // Key waypoints on the route map image (percentage positions)
+    // These coordinates are based on the typical Long March route map layout
+    const hotspots = [
+      { x: 0.88, y: 0.78, label: '瑞金', year: '1934.10', army: '红一方面军', color: '#C41E3A', desc: '中央红军从这里出发' },
+      { x: 0.75, y: 0.60, label: '桑植', year: '1935.11', army: '红二方面军', color: '#B8860B', desc: '红二方面军从湘鄂川黔出发' },
+      { x: 0.45, y: 0.45, label: '通南巴', year: '1932', army: '红四方面军', color: '#2E5AAC', desc: '红四方面军根据地' },
+      { x: 0.55, y: 0.52, label: '遵义', year: '1935.1', army: '红一方面军', color: '#C41E3A', desc: '遵义会议确立正确领导' },
+      { x: 0.42, y: 0.42, label: '泸定', year: '1935.5', army: '红一方面军', color: '#C41E3A', desc: '飞夺泸定桥' },
+      { x: 0.50, y: 0.50, label: '毕节', year: '1936.2', army: '红二方面军', color: '#B8860B', desc: '红二方面军经过毕节' },
+      { x: 0.35, y: 0.33, label: '甘孜', year: '1936.4', army: '红四方面军', color: '#2E5AAC', desc: '红四方面军与红二方面军会合' },
+      { x: 0.20, y: 0.25, label: '会宁', year: '1936.10', army: '三大主力', color: '#8B0000', desc: '三大主力红军胜利会师' },
+    ];
+
+    hotspots.forEach((pt, i) => {
+      const el = document.createElement('div');
+      el.className = 'route-hotspot';
+      el.style.left = (pt.x * 100) + '%';
+      el.style.top = (pt.y * 100) + '%';
+      el.style.backgroundColor = pt.color;
+      el.style.color = pt.color;
+      
+      // Initial animation: scale up from 0
+      el.style.transform = 'scale(0)';
+      el.style.opacity = '0';
+
+      // Tooltip
+      const tooltip = document.createElement('div');
+      tooltip.className = 'route-hotspot-tooltip';
+      tooltip.innerHTML = `
+        <span class="route-hotspot-army" style="background-color:${pt.color}"></span>
+        <strong>${pt.label}</strong>
+        <div class="route-hotspot-year">${pt.year} · ${pt.army}</div>
+      `;
+      el.appendChild(tooltip);
+
+      overlay.appendChild(el);
+
+      // Animate in with delay
+      gsap.to(el, {
+        scale: 1,
+        opacity: 1,
+        duration: 0.6,
+        delay: i * 0.15,
+        ease: 'back.out(2)',
+        scrollTrigger: {
+          trigger: '#chapter1',
+          start: 'top 60%',
+          toggleActions: 'play none none reverse'
+        }
+      });
+    });
+
+    // Title overlay
+    const titleEl = document.createElement('div');
+    titleEl.style.cssText = 'position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:12px;color:#8B7D6B;font-family:"Noto Sans SC",sans-serif;opacity:0.7;';
+    titleEl.textContent = '三大主力红军长征路线 · 悬停查看详情';
+    overlay.appendChild(titleEl);
+  }
+
+  // ===================== PROVINCE MAP: CLICKABLE CHINA =====================
+  function createProvinceMap() {
+    const container = document.getElementById('provinceMap');
+    if (!container) return;
+    // Don't clear container - image is inside!
+
+    const overlay = document.getElementById('provinceMapOverlay');
+    if (!overlay) return;
+    overlay.innerHTML = '';
+
+    // Province data with relative positions (percentage) and slogan data
+    const provinces = [
+      { name: '江西', x: 0.82, y: 0.65, count: 850, slogan: '打土豪，分田地\n—— 中央苏区核心区' },
+      { name: '福建', x: 0.88, y: 0.62, count: 420, slogan: '红军到，干人笑\n—— 闽西革命根据地' },
+      { name: '湖南', x: 0.72, y: 0.58, count: 720, slogan: '打倒土豪劣绅，消灭封建势力\n—— 湘赣边界' },
+      { name: '广东', x: 0.80, y: 0.78, count: 380, slogan: '工农兵联合起来打倒帝国主义\n—— 粤北苏区' },
+      { name: '广西', x: 0.70, y: 0.82, count: 250, slogan: '打土豪，分田地，建立苏维埃\n—— 左右江根据地' },
+      { name: '贵州', x: 0.55, y: 0.68, count: 950, slogan: '只有苏维埃才能救中国\n—— 黔北根据地' },
+      { name: '云南', x: 0.40, y: 0.72, count: 560, slogan: '打倒蒋介石，拥护苏维埃\n—— 扎西会议' },
+      { name: '四川', x: 0.45, y: 0.55, count: 2100, slogan: '赤化全川！\n—— 川陕革命根据地' },
+      { name: '西康', x: 0.35, y: 0.60, count: 180, slogan: '打土豪，分田地\n—— 甘孜会师' },
+      { name: '青海', x: 0.25, y: 0.38, count: 120, slogan: '北上抗日，挽救中国\n—— 过草地' },
+      { name: '甘肃', x: 0.42, y: 0.30, count: 340, slogan: '停止内战，一致抗日\n—— 会宁会师' },
+      { name: '陕西', x: 0.55, y: 0.35, count: 280, slogan: '红军是穷人的军队\n—— 陕北根据地' },
+    ];
+
+    const maxCount = 2100;
+
+    provinces.forEach((province, i) => {
+      const radius = 8 + Math.sqrt(province.count / maxCount) * 20;
+
+      const marker = document.createElement('div');
+      marker.className = 'province-marker';
+      marker.style.left = (province.x * 100) + '%';
+      marker.style.top = (province.y * 100) + '%';
+      marker.style.width = (radius * 2) + 'px';
+      marker.style.height = (radius * 2) + 'px';
+      marker.style.marginLeft = -radius + 'px';
+      marker.style.marginTop = -radius + 'px';
+
+      // Label tooltip
+      const label = document.createElement('div');
+      label.className = 'province-marker-label';
+      label.innerHTML = `<strong>${province.name}</strong><span style="color:var(--c-stone);font-size:10px;margin-left:4px;">${province.count}条</span>`;
+      marker.appendChild(label);
+
+      // Count below
+      const countEl = document.createElement('div');
+      countEl.className = 'province-marker-count';
+      countEl.textContent = province.count + '条';
+      marker.appendChild(countEl);
+
+      // Click event
+      marker.addEventListener('click', () => {
+        showProvinceModal(province.name, province.slogan);
+      });
+
+      overlay.appendChild(marker);
+
+      // Animate in
+      marker.style.transform = 'scale(0)';
+      marker.style.opacity = '0';
+      gsap.to(marker, {
+        scale: 1,
+        opacity: 1,
+        duration: 0.5,
+        delay: i * 0.08,
+        ease: 'back.out(2)',
+        scrollTrigger: {
+          trigger: '#chapter3',
+          start: 'top 60%',
+          toggleActions: 'play none none reverse'
+        }
+      });
+    });
+
+    // Title overlay
+    const titleEl = document.createElement('div');
+    titleEl.style.cssText = 'position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:12px;color:#8B7D6B;font-family:"Noto Sans SC",sans-serif;opacity:0.7;pointer-events:none;';
+    titleEl.textContent = '点击省份标记，查看代表性标语';
+    overlay.appendChild(titleEl);
+  }
+
+  // Province modal
+  function showProvinceModal(name, slogan) {
+    const modal = document.getElementById('infoModal');
+    const modalBody = document.getElementById('modalBody');
+    if (modal && modalBody) {
+      modalBody.innerHTML = `
+        <h3 style="font-family:var(--font-serif);font-size:1.5rem;color:var(--c-red-deep);margin-bottom:1.5rem;">${name} — 长征标语</h3>
+        <div style="font-family:var(--font-serif);font-size:1.2rem;line-height:2;color:var(--c-charcoal);white-space:pre-line;">${slogan}</div>
+      `;
+      modal.classList.add('active');
+    }
+  }
+
+  function showSloganModal(category, slogan, count) {
+    const modal = document.getElementById('infoModal');
+    const modalBody = document.getElementById('modalBody');
+    if (modal && modalBody) {
+      modalBody.innerHTML = `
+        <div style="text-align:center;margin-bottom:1.5rem;">
+          <span style="display:inline-block;background:${'#8B0000'};color:#fff;padding:0.3rem 0.8rem;border-radius:4px;font-size:0.85rem;font-family:var(--font-sans);">${category}</span>
+          <span style="display:inline-block;margin-left:0.5rem;color:var(--c-stone);font-size:0.85rem;">占比 ${count}%</span>
+        </div>
+        <h3 style="font-family:var(--font-serif);font-size:2rem;color:var(--c-red-deep);margin:1.5rem 0;text-align:center;line-height:1.6;letter-spacing:0.05em;">${slogan}</h3>
+        <div style="border-top:1px solid rgba(139,0,0,0.15);padding-top:1rem;margin-top:1rem;text-align:center;">
+          <p style="color:var(--c-stone);font-size:0.85rem;font-family:var(--font-sans);letter-spacing:0.1em;">—— 长征时期 ${category} 类代表性标语</p>
+        </div>
+      `;
+      modal.classList.add('active');
+    }
+  }
+
+  // ===================== CATEGORY VISUALIZATION =====================
+  function createCategoryViz() {
+    const container = document.getElementById('categoryViz');
+    if (!container) return;
+    container.innerHTML = ''; // 清空防止重复
+
+    const data = [
+      { category: '革命真理', count: 18, color: '#8B0000', slogan: '只有苏维埃才能救中国' },
+      { category: '马克思主义', count: 8, color: '#A0522D', slogan: '马克思主义万岁' },
+      { category: '共产党', count: 22, color: '#C41E3A', slogan: '拥护中国共产党' },
+      { category: '苏维埃', count: 25, color: '#8B0000', slogan: '建立工农苏维埃政权' },
+      { category: '抗日反帝', count: 20, color: '#B8860B', slogan: '打倒日本帝国主义' },
+      { category: '推翻国民党', count: 28, color: '#8B0000', slogan: '打倒蒋介石，活捉蒋介石' },
+      { category: '建立政权', count: 12, color: '#A0522D', slogan: '建立工农兵代表会议' },
+      { category: '战胜困难', count: 10, color: '#C41E3A', slogan: '红军是战胜困难的先锋' },
+      { category: '英雄主义', count: 8, color: '#B8860B', slogan: '学习红军英勇奋斗的精神' },
+      { category: '团结友爱', count: 8, color: '#8B0000', slogan: '工农团结起来，打倒土豪劣绅' },
+      { category: '土地革命', count: 30, color: '#C41E3A', slogan: '打土豪，分田地' },
+      { category: '民族平等', count: 12, color: '#A0522D', slogan: '民族一律平等，反对大汉族主义' },
+      { category: '经济文化', count: 15, color: '#8B0000', slogan: '取消苛捐杂税，实行八小时工作制' },
+      { category: '红军性质', count: 20, color: '#C41E3A', slogan: '红军不拿群众一针一线' },
+    ];
+
+    const width = container.offsetWidth || 600;
+    const height = 400;
+    const margin = { top: 40, right: 20, bottom: 80, left: 60 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+
+    const svg = d3.select('#categoryViz')
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .attr('viewBox', `0 0 ${width} ${height}`);
+
+    const x = d3.scaleBand()
+      .domain(data.map(d => d.category))
+      .range([0, innerWidth])
+      .padding(0.15);
+
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(data, d => d.count)])
+      .nice()
+      .range([innerHeight, 0]);
+
+    const g = svg.append('g')
+      .attr('transform', `translate(${margin.left}, ${margin.top})`);
+
+    // Grid lines
+    g.selectAll('.grid-line')
+      .data(y.ticks(5))
+      .enter()
+      .append('line')
+      .attr('class', 'chart-grid')
+      .attr('x1', 0)
+      .attr('x2', innerWidth)
+      .attr('y1', d => y(d))
+      .attr('y2', d => y(d));
+
+    // Bars - start at 0, grow on scroll
+    const bars = g.selectAll('.bar')
+      .data(data)
+      .enter()
+      .append('rect')
+      .attr('class', 'chart-bar')
+      .attr('x', d => x(d.category))
+      .attr('y', innerHeight)
+      .attr('width', x.bandwidth())
+      .attr('height', 0)
+      .attr('fill', d => d.color)
+      .attr('rx', 3)
+      .attr('opacity', 0.8)
+      .on('mouseenter', function() {
+        d3.select(this).attr('opacity', 1);
+      })
+      .on('mouseleave', function() {
+        d3.select(this).attr('opacity', 0.8);
+      })
+      .on('click', function(event, d) {
+        showSloganModal(d.category, d.slogan, d.count);
+      });
+
+    // Labels on top of bars - start at top position, fade in only
+    const labels = g.selectAll('.bar-label')
+      .data(data)
+      .enter()
+      .append('text')
+      .attr('class', 'chart-label')
+      .attr('x', d => x(d.category) + x.bandwidth() / 2)
+      .attr('y', d => y(d.count) - 5)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#2C2C2C')
+      .attr('font-size', '11px')
+      .attr('font-weight', '700')
+      .attr('opacity', 0)
+      .text(d => d.count + '%');
+
+    // X axis labels
+    g.selectAll('.x-label')
+      .data(data)
+      .enter()
+      .append('text')
+      .attr('x', d => x(d.category) + x.bandwidth() / 2)
+      .attr('y', innerHeight + 20)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#8B7D6B')
+      .attr('font-size', '11px')
+      .attr('font-family', 'Noto Sans SC')
+      .text(d => d.category)
+      .attr('transform', d => `rotate(-30, ${x(d.category) + x.bandwidth() / 2}, ${innerHeight + 20})`);
+
+    // Y axis
+    g.append('g')
+      .attr('class', 'chart-axis')
+      .call(d3.axisLeft(y).ticks(5).tickSize(0))
+      .selectAll('text')
+      .attr('fill', '#8B7D6B')
+      .attr('font-size', '11px')
+      .attr('font-family', 'Noto Sans SC');
+
+    g.select('.domain').remove();
+
+    // Scroll-triggered animation: bars grow from bottom
+    ScrollTrigger.create({
+      trigger: '#categoryViz',
+      start: 'top 80%',
+      end: 'top 30%',
+      onUpdate: (self) => {
+        const progress = self.progress;
+        bars.each(function(d, i) {
+          const barProgress = Math.max(0, Math.min(1, (progress - i * 0.05) / 0.5));
+          const targetY = y(d.count);
+          const currentY = innerHeight - (innerHeight - targetY) * barProgress;
+          d3.select(this)
+            .attr('y', currentY)
+            .attr('height', (innerHeight - targetY) * barProgress);
+        });
+        labels.each(function(d, i) {
+          const labelProgress = Math.max(0, Math.min(1, (progress - i * 0.05 - 0.3) / 0.2));
+          d3.select(this).attr('opacity', labelProgress);
+        });
+      }
+    });
+  }
+
+  // ===================== SLOGAN WALL =====================
+  function createSloganWall() {
+    const wall = document.getElementById('sloganWall');
+    if (!wall) return;
+
+    // Danmaku style container
+    wall.style.cssText = 'position:relative;overflow:hidden;height:60vh;background:linear-gradient(180deg,#2C1810,#1a0a05);border-radius:8px;';
+
+    const slogans = [
+      '共产党是无产阶级的政党',
+      '红军是工农自己的军队',
+      '只有苏维埃才能救中国',
+      '打倒日本帝国主义',
+      '打土豪分田地',
+      '红军不拿群众一针一线',
+      '欢迎白军拖枪过来',
+      '实行土地革命',
+      '取消苛捐杂税',
+      '民族一律平等',
+      '拥护中国共产党',
+      '参加红军分好田',
+      '轻伤不下火线',
+      '突破乌江到遵义',
+      '北上抗日',
+      '打倒国民党',
+      '活捉蒋介石',
+      '工农团结起来',
+      '实行八小时工作制',
+      '男女一律平等',
+      '公买公卖',
+      '红军优待俘虏',
+      '没收地主土地',
+      '穷人自动参加红军',
+      '赤化全川',
+      '创造新苏区',
+      '反对帝国主义',
+      '争取独立自由',
+      '红军是穷人的救星',
+      '武装拥护苏联',
+      '红军到，干人笑',
+      '白军到，干人叫',
+      '只有红军才是出路',
+      '拥护苏维埃',
+      '建立工农政府',
+      '打倒帝国主义',
+      '反对封建剥削',
+      '穷人翻身',
+      '分田分地',
+      '红军买卖公平',
+      '红军不拉夫',
+      '红军保护商人',
+      '红军保护交通',
+      '红军不筹饷',
+      '红军不派捐',
+      '消灭地主武装',
+      '推翻国民党统治',
+      '建立工农共和国',
+      '抗日救国',
+      '停止内战',
+      '一致对外',
+      '中国人不打中国人',
+    ];
+
+    let isPaused = false;
+    let danmakuItems = [];
+    let animationId = null;
+
+    function createDanmakuItem() {
+      const text = slogans[Math.floor(Math.random() * slogans.length)];
+      const item = document.createElement('div');
+      item.className = 'danmaku-item';
+      item.textContent = text;
+      
+      // Random styling
+      const size = 0.85 + Math.random() * 0.5;
+      const opacity = 0.4 + Math.random() * 0.5;
+      const top = Math.random() * 90;
+      const speed = 1.5 + Math.random() * 2.5;
+      const colors = ['#F5E6D3', '#C41E3A', '#B8860B', '#A0522D', '#E8D4BC'];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      
+      item.style.cssText = `
+        position: absolute;
+        white-space: nowrap;
+        font-family: 'Noto Serif SC', serif;
+        font-size: ${size}rem;
+        color: ${color};
+        opacity: ${opacity};
+        top: ${top}%;
+        left: 100%;
+        transition: none;
+        pointer-events: auto;
+        cursor: default;
+        z-index: 2;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      `;
+      
+      // Hover to pause all
+      item.addEventListener('mouseenter', () => {
+        isPaused = true;
+        item.style.color = '#fff';
+        item.style.textShadow = '0 0 10px rgba(255,255,255,0.5)';
+        item.style.zIndex = '100';
+      });
+      item.addEventListener('mouseleave', () => {
+        isPaused = false;
+        item.style.color = color;
+        item.style.textShadow = '0 1px 3px rgba(0,0,0,0.5)';
+        item.style.zIndex = '2';
+      });
+      
+      wall.appendChild(item);
+      
+      return {
+        el: item,
+        x: 100,
+        speed: speed,
+        width: item.offsetWidth || 200,
+        color: color
+      };
+    }
+
+    function animateDanmaku() {
+      if (!isPaused) {
+        // Update positions
+        danmakuItems.forEach((item, index) => {
+          item.x -= item.speed * 0.15;
+          item.el.style.left = item.x + '%';
+          
+          // Remove if off screen
+          if (item.x < -20) {
+            item.el.remove();
+            danmakuItems.splice(index, 1);
+          }
+        });
+        
+        // Add new items periodically
+        if (danmakuItems.length < 25 && Math.random() < 0.08) {
+          danmakuItems.push(createDanmakuItem());
+        }
+      }
+      
+      animationId = requestAnimationFrame(animateDanmaku);
+    }
+
+    // Initialize with some items
+    for (let i = 0; i < 15; i++) {
+      const item = createDanmakuItem();
+      item.x = 100 + Math.random() * 80;
+      item.el.style.left = item.x + '%';
+      danmakuItems.push(item);
+    }
+    
+    animateDanmaku();
+
+    // Pause when section not visible
+    ScrollTrigger.create({
+      trigger: wall,
+      start: 'top bottom',
+      end: 'bottom top',
+      onEnter: () => { isPaused = false; },
+      onLeave: () => { isPaused = true; },
+      onEnterBack: () => { isPaused = false; },
+      onLeaveBack: () => { isPaused = true; }
+    });
+  }
+
+  // ===================== WORD CLOUD =====================
+  function createWordCloud() {
+    const container = document.getElementById('wordCloud');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const words = [
+      { text: '抗日', weight: 45, color: '#8B0000' },
+      { text: '打土豪', weight: 42, color: '#A0522D' },
+      { text: '分田地', weight: 40, color: '#C41E3A' },
+      { text: '共产党', weight: 38, color: '#8B0000' },
+      { text: '红军', weight: 36, color: '#B8860B' },
+      { text: '苏维埃', weight: 34, color: '#8B0000' },
+      { text: '国民党', weight: 32, color: '#A0522D' },
+      { text: '土地革命', weight: 30, color: '#C41E3A' },
+      { text: '帝国主义', weight: 28, color: '#B8860B' },
+      { text: '工人', weight: 26, color: '#8B0000' },
+      { text: '农民', weight: 25, color: '#A0522D' },
+      { text: '白军', weight: 24, color: '#C41E3A' },
+      { text: '俘虏', weight: 22, color: '#B8860B' },
+      { text: '土地', weight: 21, color: '#8B0000' },
+      { text: '苛捐杂税', weight: 20, color: '#A0522D' },
+      { text: '八小时', weight: 18, color: '#C41E3A' },
+      { text: '民族', weight: 17, color: '#B8860B' },
+      { text: '平等', weight: 16, color: '#8B0000' },
+      { text: '团结', weight: 15, color: '#A0522D' },
+      { text: '活捉', weight: 14, color: '#C41E3A' },
+      { text: '蒋介石', weight: 13, color: '#B8860B' },
+      { text: '工农', weight: 12, color: '#8B0000' },
+      { text: '北上', weight: 11, color: '#A0522D' },
+      { text: '公买公卖', weight: 10, color: '#C41E3A' },
+      { text: '优待', weight: 9, color: '#B8860B' },
+      { text: '没收', weight: 8, color: '#8B0000' },
+      { text: '地主', weight: 8, color: '#A0522D' },
+      { text: '穷人', weight: 7, color: '#C41E3A' },
+      { text: '自动', weight: 7, color: '#B8860B' },
+      { text: '参加', weight: 6, color: '#8B0000' },
+      { text: '好田', weight: 6, color: '#A0522D' },
+      { text: '轻伤', weight: 5, color: '#C41E3A' },
+      { text: '火线', weight: 5, color: '#B8860B' },
+      { text: '乌江', weight: 5, color: '#8B0000' },
+      { text: '遵义', weight: 5, color: '#A0522D' },
+    ];
+
+    const w = container.offsetWidth || 800;
+    const h = container.offsetHeight || 400;
+    const padding = 20;
+
+    // Grid-based layout: divide container into cells, place words randomly
+    const cols = 7;
+    const rows = 5;
+    const cellW = (w - padding * 2) / cols;
+    const cellH = (h - padding * 2) / rows;
+
+    // Generate candidate positions in grid
+    const positions = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        positions.push({
+          x: padding + c * cellW + cellW / 2,
+          y: padding + r * cellH + cellH / 2,
+          used: false
+        });
+      }
+    }
+
+    // Shuffle positions randomly
+    for (let i = positions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [positions[i], positions[j]] = [positions[j], positions[i]];
+    }
+
+    // Sort words by weight descending (big words first)
+    words.sort((a, b) => b.weight - a.weight);
+
+    const placedWords = [];
+
+    words.forEach((word, i) => {
+      const fontSize = 14 + word.weight * 0.6;
+      const size = fontSize * 0.8;
+
+      // Find first unused position that doesn't overlap too much
+      let pos = null;
+      for (let p = 0; p < positions.length; p++) {
+        if (positions[p].used) continue;
+        // Check overlap with already placed words
+        let overlap = false;
+        for (const pw of placedWords) {
+          const dx = positions[p].x - pw.x;
+          const dy = positions[p].y - pw.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < (size + pw.size) * 0.6) {
+            overlap = true;
+            break;
+          }
+        }
+        if (!overlap) {
+          pos = positions[p];
+          pos.used = true;
+          break;
+        }
+      }
+
+      // If no position found, use random position
+      if (!pos) {
+        pos = {
+          x: padding + Math.random() * (w - padding * 2),
+          y: padding + Math.random() * (h - padding * 2)
+        };
+      }
+
+      placedWords.push({ x: pos.x, y: pos.y, size });
+
+      const el = document.createElement('div');
+      el.className = 'word-cloud-item';
+      el.style.left = pos.x + 'px';
+      el.style.top = pos.y + 'px';
+      el.style.fontSize = fontSize + 'px';
+      el.style.color = word.color;
+      el.style.opacity = '0';
+      el.style.transform = 'translate(-50%, -50%) scale(0.3) rotate(' + (Math.random() * 10 - 5) + 'deg)';
+      el.textContent = word.text;
+      container.appendChild(el);
+
+      // Animate in
+      gsap.to(el, {
+        opacity: 0.85,
+        scale: 1,
+        duration: 0.5,
+        delay: i * 0.04,
+        ease: 'back.out(1.5)',
+        scrollTrigger: {
+          trigger: '#wordCloud',
+          start: 'top 80%',
+          toggleActions: 'play none none reverse'
+        }
+      });
+    });
+  }
+
+  // ===================== LEGACY CARDS MODAL =====================
+  function initLegacyCards() {
+    const modal = document.getElementById('infoModal');
+    const modalBody = document.getElementById('modalBody');
+    const modalClose = document.getElementById('modalClose');
+
+    const legacyData = {
+      1: {
+        title: '原址实物：原地留存',
+        content: `
+          <h4 style="font-family:var(--font-serif);color:var(--c-red-deep);margin-bottom:1rem;">四川巴中红军石刻标语群</h4>
+          <p>川陕革命根据地留存全国数量最多的红军石刻标语。红军錾刻在山崖石壁之上，如"赤化全川""平分土地"。石头耐风吹雨淋，加上当地山区开发晚，山体没有遭到破坏，标语天然留存。</p>
+          <p>后来当地修建保护围栏、防雨棚，列为全国重点文物保护单位原地保护，成为长征及川陕苏区最经典的标语遗存。</p>
+          <h4 style="font-family:var(--font-serif);color:var(--c-red-deep);margin:1.5rem 0 1rem;">贵州遵义苟坝村民居土墙标语</h4>
+          <p>红军住在当地农户家中，用石灰水写在土墙上。村庄长期没有大规模旧房拆迁改造，土墙完整保留，文物部门加装透明玻璃罩隔绝风雨，原地保护展示。</p>
+        `
+      },
+      2: {
+        title: '民间隐匿：百姓主动保护',
+        content: `
+          <h4 style="font-family:var(--font-serif);color:var(--c-red-deep);margin-bottom:1rem;">江西于都：黄泥遮盖下的秘密</h4>
+          <p>国民党地方当局曾下令铲除、涂抹销毁所有红军宣传标语。当地村民把写有标语的土墙用厚黄泥抹上遮盖，等新中国成立后，村民一点点铲去黄泥，墙上"打土豪、分田地"等标语重见天日。</p>
+          <h4 style="font-family:var(--font-serif);color:var(--c-red-deep);margin:1.5rem 0 1rem;">贵州遵义：门板上的传承</h4>
+          <p>红军曾在农家木门上书写宣传口号，村民担心门板上的标语被销毁，将门板拆下妥善存放家中，历经几代人保管，后来家属将这块门板捐赠给当地革命纪念馆。</p>
+        `
+      },
+      3: {
+        title: '文献档案：文字记载整理',
+        content: `
+          <h4 style="font-family:var(--font-serif);color:var(--c-red-deep);margin-bottom:1rem;">红军总政治部《红军宣传标语大纲》</h4>
+          <p>长征出发前，红军政治部统一油印下发标准化标语手册，规定沿途宣传口号。这份原始文件保存在中央档案馆。很多地方墙体标语已经风化消失，但依据这份原始宣传底稿，可以还原当年各地统一张贴、书写的标语内容。</p>
+          <h4 style="font-family:var(--font-serif);color:var(--c-red-deep);margin:1.5rem 0 1rem;">敌方档案的反向留存</h4>
+          <p>云南、贵州多地民国时期各县"剿共"上报卷宗里，大量摘抄红军沿途张贴、书写的标语，用于向上汇报红军宣传动向。很多实物标语早已损毁，依靠敌方官方档案，完整保留了不少小众的地方临时宣传口号。</p>
+        `
+      },
+      4: {
+        title: '口述史料：亲历者回忆',
+        content: `
+          <h4 style="font-family:var(--font-serif);color:var(--c-red-deep);margin-bottom:1rem;">甘肃会宁：文史工作者的走访</h4>
+          <p>上世纪五六十年代，文史人员在长征胜利会师沿线村庄走访，不少高龄村民回忆当年看到红军在街头、寺庙书写的各类标语。部分墙面早已拆除消失，依靠亲历者口述，整理出几十条没有实物留存的长征宣传口号。</p>
+          <h4 style="font-family:var(--font-serif);color:var(--c-red-deep);margin:1.5rem 0 1rem;">老红军回忆录</h4>
+          <p>诸多长征亲历者在回忆录中记录：除了墙上固定标语，红军行军途中口头宣讲、临时手写在路边的简短口号，没有留下实物。依靠老红军口述回忆，补充了大量战时临时性动员类标语。</p>
+        `
+      },
+      5: {
+        title: '后世普查：复刻建档',
+        content: `
+          <h4 style="font-family:var(--font-serif);color:var(--c-red-deep);margin-bottom:1rem;">川渝黔文物普查拓印建档</h4>
+          <p>上世纪80年代文物普查中，文博工作者对沿线所有石刻、墙壁标语进行手工拓片、拍照、文字辨识，对风化模糊的文字考据复原，所有拓片、影像统一归档存入各地博物馆。</p>
+          <h4 style="font-family:var(--font-serif);color:var(--c-red-deep);margin:1.5rem 0 1rem;">全国红色标语类革命文物专项调查</h4>
+          <p>2022年6月，国家文物局启动全国性专项调查。广东省于2023年6月公布调查结果：全省初步摸查出红色标语点位501处，包括1749条红色标语单体，其中不可移动红色标语1450条、可移动红色标语299条。</p>
+        `
+      }
+    };
+
+    document.querySelectorAll('.legacy-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const id = card.getAttribute('data-legacy');
+        const data = legacyData[id];
+        if (data) {
+          modalBody.innerHTML = `
+            <h3 style="font-family:var(--font-serif);font-size:1.5rem;color:var(--c-red-deep);margin-bottom:1.5rem;">${data.title}</h3>
+            <div style="line-height:1.8;color:var(--c-charcoal);">${data.content}</div>
+          `;
+          modal.classList.add('active');
+        }
+      });
+    });
+
+    modalClose.addEventListener('click', () => {
+      modal.classList.remove('active');
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('active');
+      }
+    });
+  }
+
+  // ===================== FIREFLIES =====================
+  function createFireflies() {
+    const container = document.getElementById('fireflies');
+    if (!container) return;
+
+    for (let i = 0; i < 50; i++) {
+      const firefly = document.createElement('div');
+      firefly.className = 'firefly';
+      firefly.style.left = Math.random() * 100 + '%';
+      firefly.style.top = (50 + Math.random() * 50) + '%';
+      firefly.style.animationDelay = (Math.random() * 6) + 's';
+      firefly.style.animationDuration = (Math.random() * 4 + 4) + 's';
+      container.appendChild(firefly);
+    }
+  }
+
+  // ===================== INK SPREAD EFFECT =====================
+  function initInkSpread() {
+    document.querySelectorAll('.ink-spread').forEach(el => {
+      el.addEventListener('mousemove', (e) => {
+        const rect = el.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        el.style.setProperty('--mouse-x', x + '%');
+        el.style.setProperty('--mouse-y', y + '%');
+      });
+    });
+  }
+
+  // ===================== GALLERY SCROLL HINT =====================
+  const galleries = document.querySelectorAll('.gallery-scroll');
+  galleries.forEach(gallery => {
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+
+    gallery.addEventListener('mousedown', (e) => {
+      isDown = true;
+      startX = e.pageX - gallery.offsetLeft;
+      scrollLeft = gallery.scrollLeft;
+    });
+
+    gallery.addEventListener('mouseleave', () => isDown = false);
+    gallery.addEventListener('mouseup', () => isDown = false);
+    gallery.addEventListener('mousemove', (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - gallery.offsetLeft;
+      const walk = (x - startX) * 2;
+      gallery.scrollLeft = scrollLeft - walk;
+    });
+  });
+
+  // ===================== HORIZONTAL GALLERY ENTRANCE =====================
+  document.querySelectorAll('.gallery-scroll').forEach(gallery => {
+    const items = gallery.querySelectorAll('.gallery-item');
+    items.forEach((item, i) => {
+      gsap.fromTo(item,
+        { opacity: 0, x: 50 },
+        {
+          opacity: 1,
+          x: 0,
+          duration: 0.6,
+          delay: i * 0.1,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: gallery,
+            start: 'top 80%',
+            toggleActions: 'play none none none'
+          }
+        }
+      );
+    });
+  });
+
+  // ===================== SMOOTH SCROLL FOR ANCHORS =====================
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function(e) {
+      e.preventDefault();
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  });
+
+  // ===================== KEYBOARD NAVIGATION =====================
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.getElementById('infoModal').classList.remove('active');
+    }
+  });
+
+  // ===================== PARALLAX EFFECTS =====================
+  // Spirit nodes parallax
+  document.querySelectorAll('.spirit-node').forEach((node, i) => {
+    gsap.to(node, {
+      y: (i % 2 === 0 ? -20 : 20),
+      ease: 'none',
+      scrollTrigger: {
+        trigger: node,
+        start: 'top bottom',
+        end: 'bottom top',
+        scrub: 1
+      }
+    });
+  });
+
+  // Quote blocks subtle parallax
+  document.querySelectorAll('.quote-block').forEach(block => {
+    gsap.fromTo(block,
+      { x: -10, opacity: 0.8 },
+      {
+        x: 10,
+        opacity: 1,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: block,
+          start: 'top bottom',
+          end: 'bottom top',
+          scrub: 2
+        }
+      }
+    );
+  });
+
+  // ===================== SECTION NUMBER ANIMATION =====================
+  document.querySelectorAll('.section-number').forEach(num => {
+    gsap.fromTo(num,
+      { scale: 0.8, opacity: 0 },
+      {
+        scale: 1,
+        opacity: 1,
+        duration: 1,
+        ease: 'power3.out',
+        scrollTrigger: {
+          trigger: num,
+          start: 'top 80%',
+          toggleActions: 'play none none none'
+        }
+      }
+    );
+  });
+
+  // ===================== CHAPTER TRANSITIONS =====================
+  const sections = document.querySelectorAll('section');
+  sections.forEach((section, i) => {
+    if (i === 0) return; // Skip hero
+    
+    ScrollTrigger.create({
+      trigger: section,
+      start: 'top 80%',
+      onEnter: () => {
+        section.classList.add('active');
+      }
+    });
+  });
+
+  // ===================== REVEAL TEXT ANIMATION =====================
+  // Split text into words for reveal animation on important headings
+  document.querySelectorAll('.chapter-title').forEach(title => {
+    const text = title.textContent;
+    title.innerHTML = '';
+    text.split('').forEach((char, i) => {
+      const span = document.createElement('span');
+      span.textContent = char === ' ' ? '\u00A0' : char;
+      span.style.display = 'inline-block';
+      span.style.opacity = '0';
+      span.style.transform = 'translateY(20px)';
+      title.appendChild(span);
+
+      gsap.to(span, {
+        opacity: 1,
+        y: 0,
+        duration: 0.4,
+        delay: i * 0.03,
+        ease: 'power3.out',
+        scrollTrigger: {
+          trigger: title,
+          start: 'top 80%',
+          toggleActions: 'play none none none'
+        }
+      });
+    });
+  });
+
+  // ===================== RESPONSIVE MENU / NAVIGATION =====================
+  // Create floating navigation dots
+  const navDots = document.createElement('div');
+  navDots.style.cssText = `
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  `;
+
+  const sectionsForNav = ['hero', 'telegram', 'wallEmerge', 'messageBubble', 'chapter1', 'chapter2', 'chapter3', 'chapter4', 'chapter5', 'chapter6', 'chapter7', 'chapter8', 'ending'];
+  const sectionLabels = ['封面', '电报', '启程', '暗号', '暗夜', '笔墨', '山河', '传承', '心声', '人物', '精神', '力量', '赓续'];
+
+  sectionsForNav.forEach((id, i) => {
+    const dot = document.createElement('div');
+    dot.style.cssText = `
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(139,0,0,0.2);
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+    `;
+    dot.title = sectionLabels[i];
+    dot.addEventListener('click', () => {
+      document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+    });
+    dot.addEventListener('mouseenter', () => {
+      dot.style.background = '#C41E3A';
+      dot.style.transform = 'scale(1.3)';
+    });
+    dot.addEventListener('mouseleave', () => {
+      dot.style.background = 'rgba(139,0,0,0.2)';
+      dot.style.transform = 'scale(1)';
+    });
+    navDots.appendChild(dot);
+
+    // Update active dot on scroll
+    ScrollTrigger.create({
+      trigger: '#' + id,
+      start: 'top center',
+      end: 'bottom center',
+      onEnter: () => updateActiveDot(i),
+      onEnterBack: () => updateActiveDot(i)
+    });
+  });
+
+  document.body.appendChild(navDots);
+
+  function updateActiveDot(index) {
+    navDots.querySelectorAll('div').forEach((dot, i) => {
+      if (i === index) {
+        dot.style.background = '#C41E3A';
+        dot.style.transform = 'scale(1.3)';
+      } else {
+        dot.style.background = 'rgba(139,0,0,0.2)';
+        dot.style.transform = 'scale(1)';
+      }
+    });
+  }
+
+  // Hide nav dots on mobile
+  if (window.innerWidth < 768) {
+    navDots.style.display = 'none';
+  }
+  window.addEventListener('resize', () => {
+    navDots.style.display = window.innerWidth < 768 ? 'none' : 'flex';
+  });
+
+  // ===================== TELEGRAM TYPING EFFECT =====================
+  initTelegramEffect();
+
+  // ===================== WALL EMERGE EFFECT =====================
+  initWallEmerge();
+
+  // ===================== MESSAGE BUBBLE ANIMATION =====================
+  initMessageBubbles();
+
+  // ===================== SLOGAN GENERATOR =====================
+  initSloganGenerator();
+
+  // ===================== EASTER EGG BUTTON =====================
+  initEasterEgg();
+
+});
+
+// ===================== TELEGRAM TYPING EFFECT =====================
+function initTelegramEffect() {
+  const telegramText = document.getElementById('telegramText');
+  const telegramDate = document.getElementById('telegramDate');
+  if (!telegramText) return;
+
+  const messages = [
+    { text: '紧急通知', delay: 500 },
+    { text: '你收到了一条来自90年前的消息', delay: 1500 },
+    { text: '发报时间：1934年10月9日', delay: 3000 },
+    { text: '发报地点：江西瑞金', delay: 4500 },
+    { text: '........', delay: 5500 },
+  ];
+
+  let currentLine = 0;
+  let currentChar = 0;
+  let isTyping = false;
+
+  function typeNextMessage() {
+    if (currentLine >= messages.length) {
+      // Done typing
+      const cursor = telegramText.querySelector('.cursor');
+      if (cursor) cursor.style.animationDuration = '2s';
+      return;
+    }
+
+    const msg = messages[currentLine];
+    const lineEl = document.createElement('div');
+    lineEl.style.marginBottom = '0.5rem';
+    lineEl.style.opacity = '0';
+    lineEl.style.transform = 'translateY(5px)';
+    telegramText.insertBefore(lineEl, telegramText.querySelector('.cursor'));
+
+    // Fade in the line container
+    gsap.to(lineEl, { opacity: 1, y: 0, duration: 0.3 });
+
+    // Type characters one by one
+    let charIndex = 0;
+    const chars = msg.text.split('');
+
+    function typeChar() {
+      if (charIndex < chars.length) {
+        lineEl.textContent += chars[charIndex];
+        charIndex++;
+        setTimeout(typeChar, 80 + Math.random() * 60);
+      } else {
+        currentLine++;
+        if (currentLine < messages.length) {
+          setTimeout(typeNextMessage, messages[currentLine].delay - messages[currentLine - 1].delay);
+        } else {
+          // Update date after typing
+          gsap.to(telegramDate, { opacity: 1, duration: 0.5, delay: 0.5 });
+          const cursor = telegramText.querySelector('.cursor');
+          if (cursor) cursor.style.animationDuration = '2s';
+        }
+      }
+    }
+
+    setTimeout(typeChar, 300);
+  }
+
+  // Start typing when section is visible
+  ScrollTrigger.create({
+    trigger: '#telegram',
+    start: 'top 60%',
+    onEnter: () => {
+      if (!isTyping) {
+        isTyping = true;
+        typeNextMessage();
+      }
+    },
+    once: true
+  });
+
+  // Telegram date initially hidden
+  if (telegramDate) telegramDate.style.opacity = '0';
+}
+
+// ===================== WALL EMERGE EFFECT =====================
+function initWallEmerge() {
+  const paper = document.getElementById('republicanPaper');
+  const slogan1 = document.getElementById('emergeSlogan1');
+  if (!paper) return;
+
+  ScrollTrigger.create({
+    trigger: '#wallEmerge',
+    start: 'top 50%',
+    end: 'bottom 30%',
+    onEnter: () => {
+      paper.classList.add('active');
+      if (slogan1) slogan1.classList.add('active');
+    },
+    onLeaveBack: () => {
+      paper.classList.remove('active');
+      if (slogan1) slogan1.classList.remove('active');
+    }
+  });
+
+  // Create wall cracks
+  const cracksContainer = document.getElementById('wallCracks');
+  if (cracksContainer) {
+    for (let i = 0; i < 15; i++) {
+      const crack = document.createElement('div');
+      crack.className = 'wall-crack';
+      const height = Math.random() * 150 + 50;
+      crack.style.height = height + 'px';
+      crack.style.left = (Math.random() * 100) + '%';
+      crack.style.top = (Math.random() * 80) + '%';
+      crack.style.transform = `rotate(${Math.random() * 20 - 10}deg)`;
+      crack.style.opacity = Math.random() * 0.3 + 0.1;
+      cracksContainer.appendChild(crack);
+    }
+  }
+}
+
+// ===================== MESSAGE BUBBLE ANIMATION =====================
+function initMessageBubbles() {
+  const bubbles = ['bubble1', 'bubble2', 'bubble3'];
+  
+  bubbles.forEach((id, i) => {
+    const bubble = document.getElementById(id);
+    if (!bubble) return;
+
+    ScrollTrigger.create({
+      trigger: bubble,
+      start: 'top 80%',
+      onEnter: () => {
+        gsap.to(bubble, {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.6,
+          delay: i * 0.3,
+          ease: 'back.out(1.7)'
+        });
+      },
+      once: true
+    });
+  });
+}
+
+// ===================== SLOGAN GENERATOR =====================
+function initSloganGenerator() {
+  const genBtn = document.getElementById('genBtn');
+  const genResult = document.getElementById('genResult');
+  const resultSlogan = document.getElementById('resultSlogan');
+  const resultMeta = document.getElementById('resultMeta');
+  const copyBtn = document.getElementById('copyBtn');
+  const regenerateBtn = document.getElementById('regenerateBtn');
+  const goToGenerator = document.getElementById('goToGenerator');
+
+  if (!genBtn) return;
+
+  const templates = [
+    { prefix: '拥护', suffix: '，拥护共产党！', type: '政治宣传' },
+    { prefix: '打倒', suffix: '，救穷人！', type: '阶级动员' },
+    { prefix: '欢迎', suffix: '参加红军，保卫土地革命！', type: '扩红动员' },
+    { prefix: '只有', suffix: '才能救中国！', type: '革命信念' },
+    { prefix: '红军是', suffix: '的军队，当红军去！', type: '军队宣传' },
+    { prefix: '实行', suffix: '，分田地给穷人！', type: '土地革命' },
+    { prefix: '取消', suffix: '，不交租不还债！', type: '减租减息' },
+    { prefix: '拥护', suffix: '，打到帝国主义去！', type: '抗日宣传' },
+    { prefix: '穷人', suffix: '，只有红军才是出路！', type: '阶级觉醒' },
+    { prefix: '欢迎', suffix: '拖枪投红军，共同抗日！', type: '统战瓦解' },
+  ];
+
+  const timeWords = ['1934', '1935', '1936', '长征途中', '革命年代', '苏区时期'];
+  const placeWords = ['井冈山', '瑞金', '遵义', '泸定', '会宁', '延安', '延安', '川陕'];
+
+  function generateSlogan() {
+    const name = document.getElementById('genName').value.trim() || '同志';
+    const hometown = document.getElementById('genHometown').value.trim() || '家乡';
+    
+    const template = templates[Math.floor(Math.random() * templates.length)];
+    const time = timeWords[Math.floor(Math.random() * timeWords.length)];
+    const place = placeWords[Math.floor(Math.random() * placeWords.length)];
+
+    let slogan = '';
+    if (Math.random() > 0.5) {
+      slogan = template.prefix + hometown + '的' + name + template.suffix;
+    } else {
+      slogan = template.prefix + name + '和' + hometown + '的劳苦群众' + template.suffix;
+    }
+
+    // Add some variation
+    if (Math.random() > 0.7) {
+      slogan = slogan.replace('！', '，' + time + '于' + place + '宣！');
+    }
+
+    return {
+      text: slogan,
+      type: template.type,
+      time: time,
+      place: place
+    };
+  }
+
+  function showResult() {
+    const result = generateSlogan();
+    
+    resultSlogan.textContent = result.text;
+    resultMeta.textContent = `类型：${result.type} · 生成时间：${new Date().toLocaleString('zh-CN')}`;
+    
+    genResult.classList.add('active');
+    
+    // Scroll to result
+    genResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  genBtn.addEventListener('click', showResult);
+
+  regenerateBtn.addEventListener('click', showResult);
+
+  copyBtn.addEventListener('click', () => {
+    const text = resultSlogan.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      copyBtn.textContent = '已复制！';
+      setTimeout(() => {
+        copyBtn.textContent = '复制标语';
+      }, 2000);
+    }).catch(() => {
+      // Fallback
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      copyBtn.textContent = '已复制！';
+      setTimeout(() => {
+        copyBtn.textContent = '复制标语';
+      }, 2000);
+    });
+  });
+
+  // Go to generator from ending section
+  if (goToGenerator) {
+    goToGenerator.addEventListener('click', () => {
+      document.getElementById('sloganGenerator').scrollIntoView({ behavior: 'smooth' });
+    });
+  }
+
+  // Enter key support
+  ['genName', 'genHometown'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') showResult();
+      });
+    }
+  });
+}
+
+// ===================== EASTER EGG BUTTON =====================
+function initEasterEgg() {
+  const easterEggBtn = document.getElementById('easterEggBtn');
+  if (!easterEggBtn) return;
+
+  // Show button after scrolling past chapter 7
+  ScrollTrigger.create({
+    trigger: '#chapter7',
+    start: 'top 50%',
+    onEnter: () => {
+      easterEggBtn.classList.add('visible');
+    },
+    onLeaveBack: () => {
+      easterEggBtn.classList.remove('visible');
+    }
+  });
+
+  easterEggBtn.addEventListener('click', () => {
+    document.getElementById('sloganGenerator').scrollIntoView({ behavior: 'smooth' });
+  });
+}
+</script>
+
+<!-- Easter Egg Floating Button -->
+<button class="easter-egg-trigger" id="easterEggBtn" title="生成你的红军标语">✎</button>
+
+<!-- Background Music -->
+<audio id="bgMusic" loop preload="auto">
+  <source src="./images/bg_music.flac" type="audio/flac">
+</audio>
+
+<!-- Music Control Button -->
+<button class="music-control" id="musicBtn" title="点击播放音乐" aria-label="背景音乐控制">&#9834;</button>
+
+</body>
+</html>
